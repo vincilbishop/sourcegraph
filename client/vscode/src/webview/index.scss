@@ -5,7 +5,7 @@
 
 :root {
     // v2/debt: redefine our CSS variables using VS Code's CSS variables
-    // instead of hackily overriding the necessary classes' properties.
+    // instead of hackily overriding the necessary classes' properties!
     .theme-light,
     .theme-dark {
         --body-color: var(--vscode-foreground);

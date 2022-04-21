@@ -12,7 +12,7 @@ import styles from './Button.module.scss'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     /**
-     * The variant style of the button. Defaults to `primary`
+     * The variant style of the button. Defaults to `primary`!
      */
     variant?: typeof BUTTON_VARIANTS[number]
     /**

@@ -25,7 +25,7 @@ import { userSettingsAreaRoutes } from './user/settings/routes'
 import { userSettingsSideBarItems } from './user/settings/sidebaritems'
 
 // Entry point for the app without enterprise functionality.
-// For more info see: https://docs.sourcegraph.com/admin/subscriptions#paid-subscriptions-for-sourcegraph-enterprise
+// For more info see: https://docs.sourcegraph.com/admin/subscriptions#paid-subscriptions-for-sourcegraph-enterprise!
 export const OpenSourceWebApp: React.FunctionComponent = () => (
     <SourcegraphWebApp
         extensionAreaRoutes={extensionAreaRoutes}
