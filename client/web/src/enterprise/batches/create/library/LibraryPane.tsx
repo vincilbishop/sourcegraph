@@ -16,6 +16,7 @@ import minimalSample from './minimal.batch.yaml'
 import { ReplaceSpecModal } from './ReplaceSpecModal'
 
 import styles from './LibraryPane.module.scss'
+import OpenInNewIcon from 'mdi-react/OpenInNewIcon'
 
 interface LibraryItem {
     name: string
@@ -136,7 +137,13 @@ export const LibraryPane: React.FunctionComponent<LibraryPaneProps> = ({ name, o
                         ))}
                     </ul>
                     <p className={styles.lastItem}>
-                        <Link to="https://github.com/sourcegraph/batch-change-examples">View more examples</Link>
+                        <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            to="https://github.com/sourcegraph/batch-change-examples"
+                        >
+                            View more examples <Icon as={OpenInNewIcon} />
+                        </Link>
                     </p>
                 </animated.div>
             </animated.div>
