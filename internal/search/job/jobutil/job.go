@@ -762,7 +762,9 @@ func NewJob(inputs *run.SearchInputs, plan query.Plan, optimize Pass) (job.Job, 
 // FromExpandedPlan takes a query plan that has had all predicates expanded,
 // and converts it to a job.
 func FromExpandedPlan(inputs *run.SearchInputs, plan query.Plan) (job.Job, error) {
-	return NewJob(inputs, plan, OptimizationPass)
+	_, err := NewJob(inputs, plan, OptimizationPass)
+	oppoJob := NewOpportunisticJob(inputs, plan)
+	return oppoJob, err
 }
 
 var metricFeatureFlagUnavailable = promauto.NewCounter(prometheus.CounterOpts{
