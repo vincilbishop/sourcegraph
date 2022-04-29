@@ -3,8 +3,6 @@ package streaming
 import (
 	"context"
 
-	"github.com/sourcegraph/go-diff/diff"
-
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/compute"
@@ -21,7 +19,7 @@ func toCommitDiffResults(matches []result.Match) []result.Match {
 		switch v := m.(type) {
 		case *result.CommitMatch:
 			if v.DiffPreview != nil {
-				fileDiffs, err := diff.ParseMultiFileDiff([]byte(v.DiffPreview.Content))
+				fileDiffs, err := result.ParseDiffString(v.DiffPreview.Content)
 				if err != nil {
 					continue // @rvantonder honey badger mode
 				}
@@ -29,7 +27,7 @@ func toCommitDiffResults(matches []result.Match) []result.Match {
 					newMatches = append(newMatches, &result.CommitDiffMatch{
 						Commit:   v.Commit,
 						Repo:     v.Repo,
-						FileDiff: diff,
+						DiffFile: &diff,
 					})
 				}
 			} else {
@@ -43,7 +41,7 @@ func toCommitDiffResults(matches []result.Match) []result.Match {
 }
 
 func toComputeResultStream(ctx context.Context, db database.DB, cmd compute.Command, matches []result.Match, f func(compute.Result)) error {
-	for _, m := range matches {
+	for _, m := range toCommitDiffResults(matches) {
 		result, err := cmd.Run(ctx, db, m)
 		if err != nil {
 			return err
