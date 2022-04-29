@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-enry/go-enry/v2"
+	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/internal/search/result"
 )
@@ -268,6 +269,7 @@ func NewMetaEnvironment(r result.Match, content string) *MetaEnvironment {
 			Content: content,
 		}
 	case *result.CommitDiffMatch:
+		log15.Info("processing commit diff match")
 		path := m.Path()
 		lang, _ := enry.GetLanguageByExtension(path)
 		return &MetaEnvironment{

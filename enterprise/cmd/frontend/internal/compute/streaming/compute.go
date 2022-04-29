@@ -2,7 +2,9 @@ package streaming
 
 import (
 	"context"
+	"strconv"
 
+	"github.com/inconshreveable/log15"
 	"github.com/sourcegraph/go-diff/diff"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
@@ -20,9 +22,13 @@ func toCommitDiffResults(matches []result.Match) []result.Match {
 	for _, m := range matches {
 		switch v := m.(type) {
 		case *result.CommitMatch:
+			log15.Info("a commit match")
 			if v.DiffPreview != nil {
+				log15.Info("converting commit diff match")
 				fileDiffs, err := diff.ParseMultiFileDiff([]byte(v.DiffPreview.Content))
+				log15.Info("size of file diffs " + strconv.Itoa(len(fileDiffs)))
 				if err != nil {
+					log15.Info("err: " + err.Error())
 					continue // @rvantonder honey badger mode
 				}
 				for _, diff := range fileDiffs {
@@ -43,7 +49,7 @@ func toCommitDiffResults(matches []result.Match) []result.Match {
 }
 
 func toComputeResultStream(ctx context.Context, db database.DB, cmd compute.Command, matches []result.Match, f func(compute.Result)) error {
-	for _, m := range matches {
+	for _, m := range toCommitDiffResults(matches) {
 		result, err := cmd.Run(ctx, db, m)
 		if err != nil {
 			return err
