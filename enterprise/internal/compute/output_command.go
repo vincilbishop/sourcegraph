@@ -73,7 +73,9 @@ func resultContent(ctx context.Context, db database.DB, r result.Match) (string,
 	case *result.CommitDiffMatch:
 		var sb strings.Builder
 		for _, h := range m.Hunks {
-			sb.Write(h.Body)
+			for _, l := range h.Lines {
+				sb.WriteString(l)
+			}
 		}
 		return sb.String(), true, nil
 	case *result.CommitMatch:
