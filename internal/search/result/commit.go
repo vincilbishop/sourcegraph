@@ -3,6 +3,8 @@ package result
 import (
 	"fmt"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/xeonx/timeago"
@@ -10,6 +12,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/search/filter"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type CommitMatch struct {
@@ -241,3 +244,95 @@ func selectCommitDiffKind(c *CommitMatch, field string) Match {
 }
 
 func (r *CommitMatch) searchResultMarker() {}
+
+func parseDiffString(diff string) (res []diffFile, err error) {
+	const (
+		INIT = iota
+		IN_DIFF
+		IN_HUNK
+	)
+
+	state := INIT
+	var currentDiff diffFile
+	var currentHunk diffHunk
+	for _, line := range strings.Split(diff, "\n") {
+		if len(line) == 0 {
+			continue
+		}
+		switch state {
+		case INIT:
+			currentDiff.oldFile, currentDiff.newFile, err = splitDiffFiles(line)
+			state = IN_DIFF
+		case IN_DIFF:
+			currentHunk.oldStart, currentHunk.oldCount, currentHunk.newStart, currentHunk.newCount, currentHunk.header, err = parseHunkHeader(line)
+			state = IN_HUNK
+		case IN_HUNK:
+			switch line[0] {
+			case '-', '+', ' ':
+				currentHunk.lines = append(currentHunk.lines, line)
+			case '@':
+				currentDiff.hunks = append(currentDiff.hunks, currentHunk)
+				currentHunk = diffHunk{}
+				currentHunk.oldStart, currentHunk.oldCount, currentHunk.newStart, currentHunk.newCount, currentHunk.header, err = parseHunkHeader(line)
+				state = IN_HUNK
+			default:
+				res = append(res, currentDiff)
+				currentDiff.oldFile, currentDiff.newFile, err = splitDiffFiles(line)
+				state = IN_DIFF
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
+}
+
+var errInvalidDiff = errors.New("invalid diff format")
+
+func splitDiffFiles(fileLine string) (oldFile, newFile string, err error) {
+	split := strings.Fields(fileLine)
+	if len(split) != 2 {
+		return "", "", errInvalidDiff
+	}
+	return split[0], split[1], nil
+}
+
+var headerRegex = regexp.MustCompile(`@@ -(\d+),(\d+) \+(\d+),(\d+) @@ (.*)`)
+
+func parseHunkHeader(headerLine string) (oldStart, oldCount, newStart, newCount int, header string, err error) {
+	groups := headerRegex.FindStringSubmatch(headerLine)
+	if groups == nil {
+		return 0, 0, 0, 0, "", errInvalidDiff
+	}
+	oldStart, err = strconv.Atoi(groups[1])
+	if err != nil {
+		return 0, 0, 0, 0, "", err
+	}
+	oldCount, err = strconv.Atoi(groups[2])
+	if err != nil {
+		return 0, 0, 0, 0, "", err
+	}
+	newStart, err = strconv.Atoi(groups[3])
+	if err != nil {
+		return 0, 0, 0, 0, "", err
+	}
+	newCount, err = strconv.Atoi(groups[4])
+	if err != nil {
+		return 0, 0, 0, 0, "", err
+	}
+	return oldStart, oldCount, newStart, newCount, groups[5], nil
+}
+
+type diffFile struct {
+	oldFile, newFile string
+	hunks            []diffHunk
+}
+
+type diffHunk struct {
+	oldStart, newStart int
+	oldCount, newCount int
+	header             string
+	lines              []string
+}
