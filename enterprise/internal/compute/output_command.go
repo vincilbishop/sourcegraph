@@ -70,6 +70,12 @@ func resultContent(ctx context.Context, db database.DB, r result.Match) (string,
 			return "", false, err
 		}
 		return string(contentBytes), true, nil
+	case *result.CommitDiffMatch:
+		var sb strings.Builder
+		for _, h := range m.Hunks {
+			sb.Write(h.Body)
+		}
+		return sb.String(), true, nil
 	case *result.CommitMatch:
 		var content string
 		if m.DiffPreview != nil {
