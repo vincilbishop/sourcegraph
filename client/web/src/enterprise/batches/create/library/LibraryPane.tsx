@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 
 import ChevronDoubleLeftIcon from 'mdi-react/ChevronDoubleLeftIcon'
 import ChevronDoubleRightIcon from 'mdi-react/ChevronDoubleRightIcon'
+import OpenInNewIcon from 'mdi-react/OpenInNewIcon'
 import { animated, useSpring } from 'react-spring'
 
 import { Button, useLocalStorage, Icon, Link } from '@sourcegraph/wildcard'
@@ -16,7 +17,6 @@ import minimalSample from './minimal.batch.yaml'
 import { ReplaceSpecModal } from './ReplaceSpecModal'
 
 import styles from './LibraryPane.module.scss'
-import OpenInNewIcon from 'mdi-react/OpenInNewIcon'
 
 interface LibraryItem {
     name: string
