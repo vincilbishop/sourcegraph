@@ -15,7 +15,7 @@ import { CreateOrEditBatchChangePage } from './CreateOrEditBatchChangePage'
 import { OldBatchChangePageContent } from './OldCreateBatchChangeContent'
 
 export interface CreateBatchChangePageProps extends SettingsCascadeProps<Settings>, ThemeProps {
-    // TODO: This can go away once we only have the new SSBC create page
+    // TODO: This can go away once we remove OldBatchChangePageContent.
     headingElement: 'h1' | 'h2'
     /**
      * The id for the namespace that the batch change should be created in, or that it
