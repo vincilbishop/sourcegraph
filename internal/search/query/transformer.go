@@ -357,7 +357,7 @@ func Hoist(nodes []Node) ([]Node, error) {
 		annotation.Labels |= HeuristicHoisted
 		return Pattern{Value: value, Negated: negated, Annotation: annotation}
 	})
-	return append(ToNodes(scopeParameters), newOperator(pattern, expression.Kind)...), nil
+	return append(ToNodes(scopeParameters), NewOperator(pattern, expression.Kind)...), nil
 }
 
 // partition partitions nodes into left and right groups. A node is put in the
@@ -478,7 +478,7 @@ func basicConjunction(left, right Basic) Basic {
 	} else if right.Pattern == nil {
 		pattern = left.Pattern
 	} else if left.Pattern != nil && right.Pattern != nil {
-		pattern = newOperator([]Node{left.Pattern, right.Pattern}, And)[0]
+		pattern = NewOperator([]Node{left.Pattern, right.Pattern}, And)[0]
 	}
 	return Basic{
 		// Deep copy parameters to avoid appending multiple times to the same backing array.
@@ -541,10 +541,10 @@ func substituteOrForRegexp(nodes []Node) []Node {
 				newNode = append(newNode, Pattern{Value: valueString})
 				if len(rest) > 0 {
 					rest = substituteOrForRegexp(rest)
-					newNode = newOperator(append(newNode, rest...), Or)
+					newNode = NewOperator(append(newNode, rest...), Or)
 				}
 			} else {
-				newNode = append(newNode, newOperator(substituteOrForRegexp(v.Operands), v.Kind)...)
+				newNode = append(newNode, NewOperator(substituteOrForRegexp(v.Operands), v.Kind)...)
 			}
 		case Parameter, Pattern:
 			newNode = append(newNode, node)
@@ -639,7 +639,7 @@ func substituteConcat(callback func([]Pattern) Pattern) func(nodes []Node) []Nod
 						newNode = append(newNode, callback(ps))
 					}
 				} else {
-					newNode = append(newNode, newOperator(substituteNodes(v.Operands), v.Kind)...)
+					newNode = append(newNode, NewOperator(substituteNodes(v.Operands), v.Kind)...)
 				}
 			}
 		}
@@ -783,7 +783,7 @@ func OverrideField(nodes []Node, field, value string) []Node {
 	nodes = MapField(nodes, field, func(_ string, _ bool, _ Annotation) Node {
 		return nil
 	})
-	return newOperator(append(nodes, Parameter{Field: field, Value: value}), And)
+	return NewOperator(append(nodes, Parameter{Field: field, Value: value}), And)
 }
 
 // OmitField removes all fields `field` from a query. The `field` string
@@ -819,7 +819,7 @@ func AddRegexpField(q Q, field, pattern string) string {
 
 	if !modified {
 		// use newOperator to reduce And nodes when adding a parameter to the query toplevel.
-		q = newOperator(append(q, Parameter{Field: field, Value: pattern}), And)
+		q = NewOperator(append(q, Parameter{Field: field, Value: pattern}), And)
 	}
 	return StringHuman(q)
 }

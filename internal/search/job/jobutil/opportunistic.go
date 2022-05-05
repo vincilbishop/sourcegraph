@@ -1,6 +1,9 @@
 package jobutil
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sourcegraph/sourcegraph/internal/search"
@@ -15,7 +18,8 @@ import (
 func NewOpportunisticJob(inputs *run.SearchInputs, plan query.Plan) job.Job {
 	children := make([]job.Job, 0, len(plan))
 	for _, b := range plan {
-		for _, newBasic := range BuildBasic(b) {
+		sequentialJobs := []job.Job{}
+		for _, newBasic := range BuildBasic(b) { // Basic queries generated are sequenced.
 			child, err := ToEvaluateJob(inputs, newBasic)
 			if err != nil {
 				panic("generated an invalid basic query D:")
@@ -36,9 +40,11 @@ func NewOpportunisticJob(inputs *run.SearchInputs, plan query.Plan) job.Job {
 			maxResults := newBasic.ToParseTree().MaxResults(inputs.DefaultLimit())
 			timeout := search.TimeoutDuration(newBasic)
 			child = NewTimeoutJob(timeout, NewLimitJob(maxResults, child))
-
-			children = append(children, child)
+			sequentialJobs = append(sequentialJobs, child)
 		}
+		// children = append(children, NewSequentialJob(sequentialJobs...))
+		// ^ deduplication? also check repo:github.com/sourcegraph/sourcegraph "patternType"
+		children = append(children, NewOrJob(sequentialJobs...))
 	}
 	return NewOrJob(children...)
 }
@@ -48,7 +54,71 @@ func BuildBasic(b query.Basic) []query.Basic {
 	if g := UnorderedPatterns(b); g != nil {
 		bs = append(bs, *g)
 	}
+	if g := UnquotedPatterns(b); g != nil {
+		bs = append(bs, *g)
+	}
+	// compose unquoted => unordered separately
+	if g := UnquotedPatterns(b); g != nil {
+		if h := UnorderedPatterns(*g); h != nil {
+			bs = append(bs, *h)
+		}
+	}
+	if g := PatternsAsRepoPaths(b); g != nil {
+		if h := UnquotedPatterns(*g); h != nil {
+			if i := UnorderedPatterns(*h); i != nil {
+				bs = append(bs, *i)
+			}
+			bs = append(bs, *h)
+		}
+		bs = append(bs, *g)
+	}
 	return bs
+}
+
+// UnquotePatterns unquotes quoted patterns in queries (removing
+// quotes, and honoring escape sequences).
+func UnquotedPatterns(b query.Basic) *query.Basic {
+	// Go all the way back to the original string, and parse it as regex to discover quoted patterns.
+	rawParseTree, err := query.Parse(query.StringHuman(b.ToParseTree()), query.SearchTypeRegex)
+	if err != nil {
+		return nil
+	}
+
+	newParseTree := query.MapPattern(rawParseTree, func(value string, negated bool, annotation query.Annotation) query.Node {
+		if annotation.Labels.IsSet(query.Quoted) {
+			fmt.Printf("see quoted: %s\n", value)
+			v, err := strconv.Unquote(value) // Lazy--shouldn't actually unquote `` but whatever!!
+			if err != nil {
+				return query.Pattern{
+					Value:      value,
+					Negated:    negated,
+					Annotation: annotation,
+				}
+			}
+			return query.Pattern{
+				Value:      v,
+				Negated:    negated,
+				Annotation: annotation,
+			}
+		}
+		return query.Pattern{
+			Value:      value,
+			Negated:    negated,
+			Annotation: annotation,
+		}
+	})
+
+	newNodes, err := query.Sequence(query.For(query.SearchTypeLiteral))(newParseTree)
+	if err != nil {
+		return nil
+	}
+
+	newBasic, err := query.ToBasicQuery(newNodes)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return &newBasic
 }
 
 // UnorderedPatterns generates a query that interprets all recognized patterns
@@ -68,39 +138,66 @@ func UnorderedPatterns(b query.Basic) *query.Basic {
 			return
 		}
 		for _, p := range strings.Split(value, " ") {
-			andPatterns = append(andPatterns, query.NewPattern(p, query.Literal, query.Range{}))
+			andPatterns = append(andPatterns, query.Pattern{
+				Value:      p,
+				Negated:    negated,
+				Annotation: annotation, // danger: preserves invalid range
+			})
 		}
 	})
 	return &query.Basic{
 		Parameters: b.Parameters,
 		Pattern:    query.Operator{Kind: query.And, Operands: andPatterns, Annotation: query.Annotation{}},
 	}
+}
 
-	/*
-		s := query.StringHuman([]query.Node{b.Pattern})
-		r := regexp.MustCompile(`\bonly (repos?|files?|paths?|content|symbols?)\b`)
-		out := r.Split(s, -1)
-		if len(out) == 0 {
-			return nil
+func PatternsAsRepoPaths(b query.Basic) *query.Basic {
+	rawParseTree, err := query.Parse(query.StringHuman(b.ToParseTree()), query.SearchTypeLiteral) // We're going all the way back baby.
+	if err != nil {
+		return nil
+	}
+
+	repoParams := []query.Node{}
+
+	// gotta collect terms to promote as repo, becauase doing it in-place
+	// creates patterns inside concat nodes, which just makes life more
+	// difficult. Trying to Map concat nodes is also a pain. Just delete
+	// patterns, and add the repo filters back.
+	newParseTree := query.MapPattern(rawParseTree, func(value string, negated bool, annotation query.Annotation) query.Node {
+		r := regexp.MustCompile(`(https://)?github.com/.*`)
+		v := r.FindString(value)
+		if v == "" {
+			return query.Pattern{
+				Value:      value,
+				Negated:    negated,
+				Annotation: annotation,
+			}
 		}
+		v = strings.TrimPrefix(v, "https://")
+		v = strings.TrimPrefix(v, "github.com/")
+		v = strings.TrimSuffix(v, "/")
+		repoParams = append(repoParams, query.Parameter{
+			Field:   query.FieldRepo,
+			Value:   v,
+			Negated: negated,
+		})
+		return nil
+	})
 
-		// remove any selects
-		parameters := query.MapField(
-			ParametersToNodes(b.Parameters),
-			query.FieldSelect,
-			func(_ string, _ bool, _ query.Annotation) query.Node {
-				return nil
-			})
+	// Gotta reduce this, or we won't be able to partition to basic
+	// query--the basic partitioning is not super smart.
+	newParseTree = query.NewOperator(append(newParseTree, repoParams...), query.And)
+	newNodes, err := query.Sequence(query.For(query.SearchTypeLiteral))(newParseTree)
+	if err != nil {
+		return nil
+	}
 
-		vr := regexp.MustCompile(`repo|file|path|content|symbol`)
-		stripped := strings.Join(out, "")
-		parameters = append(parameters, query.Parameter{Field: "select", Value: vr.FindString(r.FindString(s))})
+	newBasic, err := query.ToBasicQuery(newNodes)
+	if err != nil {
+		panic(err.Error())
+	}
 
-		return &query.Basic{
-			Parameters: NodesToParameters(parameters),
-			Pattern:    query.Pattern{Value: strings.TrimSpace(stripped)},
-		}
-	*/
+	return &newBasic
 }
 
 func ParametersToNodes(parameters []query.Parameter) []query.Node {

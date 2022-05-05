@@ -56,9 +56,9 @@ func (p Plan) ToParseTree() Q {
 	nodes := make([]Node, 0, len(p))
 	for _, basic := range p {
 		operands := basic.ToParseTree()
-		nodes = append(nodes, newOperator(operands, And)...)
+		nodes = append(nodes, NewOperator(operands, And)...)
 	}
-	return Q(newOperator(nodes, Or))
+	return Q(NewOperator(nodes, Or))
 }
 
 // Basic represents a leaf expression to evaluate in our search engine. A basic
