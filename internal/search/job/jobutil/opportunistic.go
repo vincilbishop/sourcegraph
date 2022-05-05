@@ -1,7 +1,6 @@
 package jobutil
 
 import (
-	"regexp"
 	"strings"
 
 	"github.com/sourcegraph/sourcegraph/internal/search"
@@ -15,8 +14,8 @@ import (
 // the input string.
 func NewOpportunisticJob(inputs *run.SearchInputs, plan query.Plan) job.Job {
 	children := make([]job.Job, 0, len(plan))
-	for _, q := range plan {
-		for _, newBasic := range BuildBasic(q) {
+	for _, b := range plan {
+		for _, newBasic := range BuildBasic(b) {
 			child, err := ToEvaluateJob(inputs, newBasic)
 			if err != nil {
 				panic("generated an invalid basic query D:")
@@ -45,37 +44,63 @@ func NewOpportunisticJob(inputs *run.SearchInputs, plan query.Plan) job.Job {
 }
 
 func BuildBasic(b query.Basic) []query.Basic {
-	var bs []query.Basic
-	if g := OnlySelect(b); g != nil {
+	bs := []query.Basic{b} // Include incoming query.
+	if g := UnorderedPatterns(b); g != nil {
 		bs = append(bs, *g)
 	}
 	return bs
 }
 
-func OnlySelect(b query.Basic) *query.Basic {
-	s := query.StringHuman([]query.Node{b.Pattern})
-	r := regexp.MustCompile(`\bonly (repos?|files?|paths?|content|symbols?)\b`)
-	out := r.Split(s, -1)
-	if len(out) == 0 {
-		return nil
-	}
-
-	// remove any selects
-	parameters := query.MapField(
-		ParametersToNodes(b.Parameters),
-		query.FieldSelect,
-		func(_ string, _ bool, _ query.Annotation) query.Node {
-			return nil
-		})
-
-	vr := regexp.MustCompile(`repo|file|path|content|symbol`)
-	stripped := strings.Join(out, "")
-	parameters = append(parameters, query.Parameter{Field: "select", Value: vr.FindString(r.FindString(s))})
-
+// UnorderedPatterns generates a query that interprets all recognized patterns
+// as unordered terms (`and`-ed terms). Brittle assumption: only for queries in
+// default/literal mode, where all terms are space-separated and spaces are
+// unescapable, implying we can obtain patterns with a split on space.
+func UnorderedPatterns(b query.Basic) *query.Basic {
+	var andPatterns []query.Node
+	query.VisitPattern([]query.Node{b.Pattern}, func(value string, negated bool, annotation query.Annotation) {
+		if negated {
+			// append negated terms as-is.
+			andPatterns = append(andPatterns, query.Pattern{
+				Value:      value,
+				Negated:    negated,
+				Annotation: annotation,
+			})
+			return
+		}
+		for _, p := range strings.Split(value, " ") {
+			andPatterns = append(andPatterns, query.NewPattern(p, query.Literal, query.Range{}))
+		}
+	})
 	return &query.Basic{
-		Parameters: NodesToParameters(parameters),
-		Pattern:    query.Pattern{Value: strings.TrimSpace(stripped)},
+		Parameters: b.Parameters,
+		Pattern:    query.Operator{Kind: query.And, Operands: andPatterns, Annotation: query.Annotation{}},
 	}
+
+	/*
+		s := query.StringHuman([]query.Node{b.Pattern})
+		r := regexp.MustCompile(`\bonly (repos?|files?|paths?|content|symbols?)\b`)
+		out := r.Split(s, -1)
+		if len(out) == 0 {
+			return nil
+		}
+
+		// remove any selects
+		parameters := query.MapField(
+			ParametersToNodes(b.Parameters),
+			query.FieldSelect,
+			func(_ string, _ bool, _ query.Annotation) query.Node {
+				return nil
+			})
+
+		vr := regexp.MustCompile(`repo|file|path|content|symbol`)
+		stripped := strings.Join(out, "")
+		parameters = append(parameters, query.Parameter{Field: "select", Value: vr.FindString(r.FindString(s))})
+
+		return &query.Basic{
+			Parameters: NodesToParameters(parameters),
+			Pattern:    query.Pattern{Value: strings.TrimSpace(stripped)},
+		}
+	*/
 }
 
 func ParametersToNodes(parameters []query.Parameter) []query.Node {
