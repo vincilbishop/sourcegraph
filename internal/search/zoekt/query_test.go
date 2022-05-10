@@ -142,15 +142,15 @@ func Test_toZoektPattern(t *testing.T) {
 
 	autogold.Want("basic string",
 		`substr:"a"`).
-		Equal(t, test(`a`, query.SearchTypeLiteral))
+		Equal(t, test(`a`, query.SearchTypeLiteralDefault))
 
 	autogold.Want("basic and-expression",
 		`(or (and substr:"a" substr:"b" (not substr:"c")) substr:"d")`).
-		Equal(t, test(`a and b and not c or d`, query.SearchTypeLiteral))
+		Equal(t, test(`a and b and not c or d`, query.SearchTypeLiteralDefault))
 
 	autogold.Want("quoted string in literal escapes quotes (regexp meta and string escaping)",
 		`substr:"\"func main() {\\n\""`).
-		Equal(t, test(`"func main() {\n"`, query.SearchTypeLiteral))
+		Equal(t, test(`"func main() {\n"`, query.SearchTypeLiteralDefault))
 
 	autogold.Want("quoted string in regexp interpreted as string (regexp meta escaped)",
 		`substr:"func main() {\n"`).
