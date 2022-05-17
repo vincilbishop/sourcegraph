@@ -13,7 +13,7 @@ type computeClient interface {
 
 func testComputeClient(t *testing.T, client computeClient) {
 	t.Run("compute endpoint returns results", func(t *testing.T) {
-		results, err := client.Compute(`repo:^github.com/sgtest/go-diff$ file:\.go func Parse(\w+)`)
+		results, err := client.Compute(`repo:^github.com/sgtest/go-diff$ file:\.go func Paeieiessrjffjfjfjfjse(\w+)`)
 		if err != nil {
 			t.Errorf("unexpected error: %+v", err)
 		}
