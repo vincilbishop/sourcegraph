@@ -84,6 +84,7 @@ fi
 CHECK=$(printf 'printf("hello world!\\\n");' | "$INSTALL_DIR"/comby 'printf("hello :[1]!\\n");' 'printf("hello comby!\\n");' .c -stdin || echo broken)
 if [ "$CHECK" == "broken" ]; then
   printf "[-] My guess is that you need to install the pcre library on your system. Try:\n"
+  sudo apt-get install libev-dev
   ldd /usr/local/bin/comby
   if [ $OS == "macos" ]; then
     printf "[*] brew install comby\n"
