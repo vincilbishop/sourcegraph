@@ -194,7 +194,7 @@ func mockRepoComparison(t *testing.T, baseRev, headRev, diff string) {
 		}
 		return api.CommitID(spec), nil
 	}
-	t.Cleanup(func() { git.Mocks.GetCommit = nil })
+	t.Cleanup(func() { gitserver.Mocks.GetCommit = nil })
 
 	gitserver.Mocks.ExecReader = func(args []string) (io.ReadCloser, error) {
 		if len(args) < 1 && args[0] != "diff" {

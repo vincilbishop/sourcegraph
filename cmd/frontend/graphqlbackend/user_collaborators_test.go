@@ -1,19 +1,19 @@
 package graphqlbackend
 
 import (
+	"context"
+	"sort"
+	"sync"
+	"testing"
+
 	"github.com/hexops/autogold"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/types"
-	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
-
-	"context"
-	"sort"
-	"sync"
-	"testing"
 )
 
 func TestUserCollaborators_gitserverParallelRecentCommitters(t *testing.T) {
@@ -21,13 +21,13 @@ func TestUserCollaborators_gitserverParallelRecentCommitters(t *testing.T) {
 
 	type args struct {
 		repoName api.RepoName
-		opt      git.CommitsOptions
+		opt      gitserver.CommitsOptions
 	}
 	var (
 		callsMu sync.Mutex
 		calls   []args
 	)
-	gitCommitsFunc := func(ctx context.Context, db database.DB, repoName api.RepoName, opt git.CommitsOptions, perms authz.SubRepoPermissionChecker) ([]*gitdomain.Commit, error) {
+	gitCommitsFunc := func(ctx context.Context, db database.DB, repoName api.RepoName, opt gitserver.CommitsOptions, perms authz.SubRepoPermissionChecker) ([]*gitdomain.Commit, error) {
 		callsMu.Lock()
 		calls = append(calls, args{repoName, opt})
 		callsMu.Unlock()
@@ -68,7 +68,7 @@ func TestUserCollaborators_gitserverParallelRecentCommitters(t *testing.T) {
 	autogold.Want("calls", []args{
 		{
 			repoName: api.RepoName("golang/go"),
-			opt: git.CommitsOptions{
+			opt: gitserver.CommitsOptions{
 				N:                200,
 				NoEnsureRevision: true,
 				NameOnly:         true,
@@ -76,7 +76,7 @@ func TestUserCollaborators_gitserverParallelRecentCommitters(t *testing.T) {
 		},
 		{
 			repoName: api.RepoName("gorilla/mux"),
-			opt: git.CommitsOptions{
+			opt: gitserver.CommitsOptions{
 				N:                200,
 				NoEnsureRevision: true,
 				NameOnly:         true,
@@ -84,7 +84,7 @@ func TestUserCollaborators_gitserverParallelRecentCommitters(t *testing.T) {
 		},
 		{
 			repoName: api.RepoName("sourcegraph/sourcegraph"),
-			opt: git.CommitsOptions{
+			opt: gitserver.CommitsOptions{
 				N:                200,
 				NoEnsureRevision: true,
 				NameOnly:         true,

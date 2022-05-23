@@ -134,7 +134,7 @@ func TestRepositoryComparison(t *testing.T) {
 			{ID: api.CommitID(wantHeadRevision)},
 		}
 
-		git.Mocks.Commits = func(repo api.RepoName, opts git.CommitsOptions) ([]*gitdomain.Commit, error) {
+		gitserver.Mocks.Commits = func(repo api.RepoName, opts gitserver.CommitsOptions) ([]*gitdomain.Commit, error) {
 			wantRange := fmt.Sprintf("%s..%s", wantBaseRevision, wantHeadRevision)
 
 			if have, want := opts.Range, wantRange; have != want {
@@ -144,7 +144,7 @@ func TestRepositoryComparison(t *testing.T) {
 			return commits, nil
 		}
 
-		defer func() { git.Mocks.Commits = nil }()
+		defer func() { gitserver.Mocks.Commits = nil }()
 		commitConnection := comp.Commits(&graphqlutil.ConnectionArgs{})
 
 		nodes, err := commitConnection.Nodes(ctx)
