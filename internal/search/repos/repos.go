@@ -368,7 +368,7 @@ func (r *Resolver) Resolve(ctx context.Context, op search.RepoOptions) (Resolved
 
 				if op.CommitAfter != "" {
 
-					if hasCommitAfter, err := gitserver.NewClient(r.DB).HasCommitAfter(ctx, r.DB, repoRev.Repo.Name, op.CommitAfter, string(commitID), authz.DefaultSubRepoPermsChecker); err != nil {
+					if hasCommitAfter, err := gitserver.NewClient(r.DB).HasCommitAfter(ctx, repoRev.Repo.Name, op.CommitAfter, string(commitID), authz.DefaultSubRepoPermsChecker); err != nil {
 						if !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) && !gitdomain.IsRepoNotExist(err) {
 							res.Lock()
 							res.MultiError = errors.Append(res.MultiError, err)

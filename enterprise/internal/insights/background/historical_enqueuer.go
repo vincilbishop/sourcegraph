@@ -122,7 +122,7 @@ func newInsightHistoricalEnqueuer(ctx context.Context, workerBaseStore *basestor
 		},
 		gitFirstEverCommit: (&cachedGitFirstEverCommit{impl: gitFirstEverCommit}).gitFirstEverCommit,
 		gitFindRecentCommit: func(ctx context.Context, repoName api.RepoName, target time.Time) ([]*gitdomain.Commit, error) {
-			return gitserver.NewClient(dbConn).Commits(ctx, dbConn, repoName, gitserver.CommitsOptions{N: 1, Before: target.Format(time.RFC3339), DateOrder: true}, authz.DefaultSubRepoPermsChecker)
+			return gitserver.NewClient(dbConn).Commits(ctx, repoName, gitserver.CommitsOptions{N: 1, Before: target.Format(time.RFC3339), DateOrder: true}, authz.DefaultSubRepoPermsChecker)
 		},
 
 		frameFilter: compression.NewHistoricalFilter(true, maxTime, insightsStore.Handle().DB()),
@@ -548,5 +548,5 @@ func (c *cachedGitFirstEverCommit) gitFirstEverCommit(ctx context.Context, db da
 }
 
 func gitFirstEverCommit(ctx context.Context, db database.DB, repoName api.RepoName) (*gitdomain.Commit, error) {
-	return gitserver.NewClient(db).FirstEverCommit(ctx, db, repoName, authz.DefaultSubRepoPermsChecker)
+	return gitserver.NewClient(db).FirstEverCommit(ctx, repoName, authz.DefaultSubRepoPermsChecker)
 }

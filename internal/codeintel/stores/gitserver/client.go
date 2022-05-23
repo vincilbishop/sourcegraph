@@ -45,7 +45,7 @@ func (c *Client) CommitExists(ctx context.Context, repositoryID int, commit stri
 	if err != nil {
 		return false, err
 	}
-	return gitserver.NewClient(c.db).CommitExists(ctx, c.db, repo, api.CommitID(commit), authz.DefaultSubRepoPermsChecker)
+	return gitserver.NewClient(c.db).CommitExists(ctx, repo, api.CommitID(commit), authz.DefaultSubRepoPermsChecker)
 }
 
 type RepositoryCommit struct {
@@ -98,7 +98,7 @@ func (c *Client) CommitsExist(ctx context.Context, commits []RepositoryCommit) (
 		originalIndexes = append(originalIndexes, i)
 	}
 
-	exists, err := gitserver.NewClient(c.db).CommitsExist(ctx, c.db, repoCommits, authz.DefaultSubRepoPermsChecker)
+	exists, err := gitserver.NewClient(c.db).CommitsExist(ctx, repoCommits, authz.DefaultSubRepoPermsChecker)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (c *Client) Head(ctx context.Context, repositoryID int) (_ string, revision
 		return "", false, err
 	}
 
-	return gitserver.NewClient(c.db).Head(ctx, c.db, repo, authz.DefaultSubRepoPermsChecker)
+	return gitserver.NewClient(c.db).Head(ctx, repo, authz.DefaultSubRepoPermsChecker)
 }
 
 // CommitDate returns the time that the given commit was committed. If the given revision does not exist,
@@ -154,7 +154,7 @@ func (c *Client) CommitDate(ctx context.Context, repositoryID int, commit string
 	}
 
 	db := c.db
-	rev, tm, ok, err := gitserver.NewClient(db).CommitDate(ctx, db, repo, api.CommitID(commit), authz.DefaultSubRepoPermsChecker)
+	rev, tm, ok, err := gitserver.NewClient(db).CommitDate(ctx, repo, api.CommitID(commit), authz.DefaultSubRepoPermsChecker)
 	if err == nil {
 		return rev, tm, ok, nil
 	}
@@ -239,7 +239,7 @@ func (c *Client) RefDescriptions(ctx context.Context, repositoryID int, pointedA
 		return nil, err
 	}
 
-	return gitserver.NewClient(c.db).RefDescriptions(ctx, c.db, repo, authz.DefaultSubRepoPermsChecker, pointedAt...)
+	return gitserver.NewClient(c.db).RefDescriptions(ctx, repo, authz.DefaultSubRepoPermsChecker, pointedAt...)
 }
 
 // CommitsUniqueToBranch returns a map from commits that exist on a particular branch in the given repository to
@@ -259,7 +259,7 @@ func (c *Client) CommitsUniqueToBranch(ctx context.Context, repositoryID int, br
 		return nil, err
 	}
 
-	return gitserver.NewClient(c.db).CommitsUniqueToBranch(ctx, c.db, repo, branchName, isDefaultBranch, maxAge, authz.DefaultSubRepoPermsChecker)
+	return gitserver.NewClient(c.db).CommitsUniqueToBranch(ctx, repo, branchName, isDefaultBranch, maxAge, authz.DefaultSubRepoPermsChecker)
 }
 
 // BranchesContaining returns a map from branch names to branch tip hashes for each branch
@@ -269,7 +269,7 @@ func (c *Client) BranchesContaining(ctx context.Context, db database.DB, reposit
 	if err != nil {
 		return nil, err
 	}
-	return gitserver.NewClient(db).BranchesContaining(ctx, db, repo, api.CommitID(commit), authz.DefaultSubRepoPermsChecker)
+	return gitserver.NewClient(db).BranchesContaining(ctx, repo, api.CommitID(commit), authz.DefaultSubRepoPermsChecker)
 }
 
 // DefaultBranchContains tells if the default branch contains the given commit ID.

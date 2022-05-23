@@ -143,7 +143,7 @@ func ListBranches(ctx context.Context, db database.DB, repo api.RepoName, opt Br
 
 		branch := &Branch{Name: name, Head: ref.CommitID}
 		if opt.IncludeCommit {
-			branch.Commit, err = gitserver.NewClient(db).GetCommit(ctx, db, repo, ref.CommitID, gitserver.ResolveRevisionOptions{}, authz.DefaultSubRepoPermsChecker)
+			branch.Commit, err = gitserver.NewClient(db).GetCommit(ctx, repo, ref.CommitID, gitserver.ResolveRevisionOptions{}, authz.DefaultSubRepoPermsChecker)
 			if err != nil {
 				return nil, err
 			}

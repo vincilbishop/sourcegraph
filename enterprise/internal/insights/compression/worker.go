@@ -206,7 +206,7 @@ func getCommits(ctx context.Context, db database.DB, name api.RepoName, after ti
 		before = until.Format(time.RFC3339)
 	}
 
-	return gitserver.NewClient(db).Commits(ctx, db, name, gitserver.CommitsOptions{N: 0, DateOrder: true, NoEnsureRevision: true, After: after.Format(time.RFC3339), Before: before}, authz.DefaultSubRepoPermsChecker)
+	return gitserver.NewClient(db).Commits(ctx, name, gitserver.CommitsOptions{N: 0, DateOrder: true, NoEnsureRevision: true, After: after.Format(time.RFC3339), Before: before}, authz.DefaultSubRepoPermsChecker)
 }
 
 // getMetadata gets the index metadata for a repository. The metadata will be generated if it doesn't already exist, such as

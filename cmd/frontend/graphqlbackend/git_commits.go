@@ -52,7 +52,7 @@ func (r *gitCommitConnectionResolver) compute(ctx context.Context) ([]*gitdomain
 		if r.after != nil {
 			after = *r.after
 		}
-		return gitserver.NewClient(r.db).Commits(ctx, r.db, r.repo.RepoName(), gitserver.CommitsOptions{
+		return gitserver.NewClient(r.db).Commits(ctx, r.repo.RepoName(), gitserver.CommitsOptions{
 			Range:        r.revisionRange,
 			N:            uint(n),
 			MessageQuery: query,

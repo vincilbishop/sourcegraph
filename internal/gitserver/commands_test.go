@@ -945,7 +945,7 @@ func TestRepository_GetCommit(t *testing.T) {
 				resolveRevisionOptions := ResolveRevisionOptions{
 					NoEnsureRevision: test.noEnsureRevision,
 				}
-				commit, err := client.GetCommit(ctx, db, test.repo, test.id, resolveRevisionOptions, checker)
+				commit, err := client.GetCommit(ctx, test.repo, test.id, resolveRevisionOptions, checker)
 				if err != nil {
 					if test.revisionNotFoundError {
 						if !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
@@ -962,7 +962,7 @@ func TestRepository_GetCommit(t *testing.T) {
 				}
 
 				// Test that trying to get a nonexistent commit returns RevisionNotFoundError.
-				if _, err := client.GetCommit(ctx, db, test.repo, NonExistentCommitID, resolveRevisionOptions, checker); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
+				if _, err := client.GetCommit(ctx, test.repo, NonExistentCommitID, resolveRevisionOptions, checker); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
 					t.Errorf("%s: for nonexistent commit: got err %v, want RevisionNotFoundError", label, err)
 				}
 
@@ -1108,7 +1108,7 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 				}
 
 				repo := MakeGitRepository(t, gitCommands...)
-				got, err := client.HasCommitAfter(ctx, db, repo, tc.after, tc.revspec, nil)
+				got, err := client.HasCommitAfter(ctx, repo, tc.after, tc.revspec, nil)
 				if err != nil || got != tc.want {
 					t.Errorf("got %t hascommitafter, want %t", got, tc.want)
 				}
@@ -1128,7 +1128,7 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 				// Case where user can't view commit 2, but can view commits 0 and 1. In each test case the result should match the case where no sub-repo perms enabled
 				checker := getTestSubRepoPermsChecker("file2")
 				repo := MakeGitRepository(t, gitCommands...)
-				got, err := client.HasCommitAfter(ctx, db, repo, tc.after, tc.revspec, checker)
+				got, err := client.HasCommitAfter(ctx, repo, tc.after, tc.revspec, checker)
 				if err != nil {
 					t.Errorf("got error: %s", err)
 				}
@@ -1139,7 +1139,7 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 				// Case where user can't view commit 1 or commit 2, which will mean in some cases since HasCommitAfter will be false due to those commits not being visible.
 				checker = getTestSubRepoPermsChecker("file1", "file2")
 				repo = MakeGitRepository(t, gitCommands...)
-				got, err = client.HasCommitAfter(ctx, db, repo, tc.after, tc.revspec, checker)
+				got, err = client.HasCommitAfter(ctx, repo, tc.after, tc.revspec, checker)
 				if err != nil {
 					t.Errorf("got error: %s", err)
 				}
@@ -1190,7 +1190,7 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 			}
 
 			repo := MakeGitRepository(t, gitCommands...)
-			gotCommit, err := client.FirstEverCommit(ctx, db, repo, nil)
+			gotCommit, err := client.FirstEverCommit(ctx, repo, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1215,12 +1215,12 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 
 			repo := MakeGitRepository(t, gitCommands...)
 			// Try to get first commit when user doesn't have permission to view
-			_, err := client.FirstEverCommit(ctx, db, repo, checkerWithoutAccessFirstCommit)
+			_, err := client.FirstEverCommit(ctx, repo, checkerWithoutAccessFirstCommit)
 			if !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
 				t.Errorf("expected a RevisionNotFoundError since the user does not have access to view this commit, got :%s", err)
 			}
 			// Try to get first commit when user does have permission to view, should succeed
-			gotCommit, err := client.FirstEverCommit(ctx, db, repo, checkerWithAccessFirstCommit)
+			gotCommit, err := client.FirstEverCommit(ctx, repo, checkerWithAccessFirstCommit)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1233,7 +1233,7 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 				UID:      1,
 				Internal: true,
 			})
-			gotCommit, err = client.FirstEverCommit(newCtx, db, repo, checkerWithoutAccessFirstCommit)
+			gotCommit, err = client.FirstEverCommit(newCtx, repo, checkerWithoutAccessFirstCommit)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1258,7 +1258,7 @@ func TestHead(t *testing.T) {
 		repo := MakeGitRepository(t, gitCommands...)
 		ctx := context.Background()
 
-		head, exists, err := client.Head(ctx, db, repo, nil)
+		head, exists, err := client.Head(ctx, repo, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1285,7 +1285,7 @@ func TestHead(t *testing.T) {
 		})
 		checker := getTestSubRepoPermsChecker("file")
 		// call Head() when user doesn't have access to view the commit
-		_, exists, err := client.Head(ctx, db, repo, checker)
+		_, exists, err := client.Head(ctx, repo, checker)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1294,7 +1294,7 @@ func TestHead(t *testing.T) {
 		}
 		readAllChecker := getTestSubRepoPermsChecker()
 		// call Head() when user has access to view the commit; should return expected commit
-		head, exists, err := client.Head(ctx, db, repo, readAllChecker)
+		head, exists, err := client.Head(ctx, repo, readAllChecker)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1322,7 +1322,7 @@ func TestCommitExists(t *testing.T) {
 		t.Run(label, func(t *testing.T) {
 			repo := MakeGitRepository(t, gitCommands...)
 
-			exists, err := client.CommitExists(ctx, db, repo, commitID, checker)
+			exists, err := client.CommitExists(ctx, repo, commitID, checker)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1330,7 +1330,7 @@ func TestCommitExists(t *testing.T) {
 				t.Fatal("Should exist")
 			}
 
-			exists, err = client.CommitExists(ctx, db, repo, nonExistentCommitID, checker)
+			exists, err = client.CommitExists(ctx, repo, nonExistentCommitID, checker)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1402,7 +1402,7 @@ func TestRepository_Commits(t *testing.T) {
 				testCommits(ctx, label, test.repo, CommitsOptions{Range: string(test.id)}, checker, test.wantTotal, test.wantCommits, t)
 
 				// Test that trying to get a nonexistent commit returns RevisionNotFoundError.
-				if _, err := client.Commits(ctx, db, test.repo, CommitsOptions{Range: string(NonExistentCommitID)}, nil); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
+				if _, err := client.Commits(ctx, test.repo, CommitsOptions{Range: string(NonExistentCommitID)}, nil); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
 					t.Errorf("%s: for nonexistent commit: got err %v, want RevisionNotFoundError", label, err)
 				}
 			})
@@ -1485,7 +1485,7 @@ func TestCommits_SubRepoPerms(t *testing.T) {
 	for label, test := range tests {
 		t.Run(label, func(t *testing.T) {
 			checker := getTestSubRepoPermsChecker(test.noAccessPaths...)
-			commits, err := client.Commits(ctx, db, test.repo, test.opt, checker)
+			commits, err := client.Commits(ctx, test.repo, test.opt, checker)
 			if err != nil {
 				t.Errorf("%s: Commits(): %s", label, err)
 				return
@@ -1582,7 +1582,7 @@ func TestCommits_SubRepoPerms_ReturnNCommits(t *testing.T) {
 	for label, test := range tests {
 		t.Run(label, func(t *testing.T) {
 			checker := getTestSubRepoPermsChecker(test.noAccessPaths...)
-			commits, err := client.Commits(ctx, db, test.repo, test.opt, checker)
+			commits, err := client.Commits(ctx, test.repo, test.opt, checker)
 			if err != nil {
 				t.Errorf("%s: Commits(): %s", label, err)
 				return
@@ -1957,7 +1957,7 @@ func TestFilterRefDescriptions(t *testing.T) {
 	}
 
 	checker := getTestSubRepoPermsChecker("file3")
-	filtered := client.filterRefDescriptions(ctx, database.NewMockDB(), repo, refDescriptions, checker)
+	filtered := client.filterRefDescriptions(ctx, repo, refDescriptions, checker)
 	expectedRefDescriptions := map[string][]gitdomain.RefDescription{
 		"d38233a79e037d2ab8170b0d0bc0aa438473e6da": {},
 		"2ba4dd2b9a27ec125fea7d72e12b9824ead18631": {},
@@ -1987,7 +1987,7 @@ func TestRefDescriptions(t *testing.T) {
 	}
 
 	t.Run("basic", func(t *testing.T) {
-		refDescriptions, err := client.RefDescriptions(ctx, db, repo, nil)
+		refDescriptions, err := client.RefDescriptions(ctx, repo, nil)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
@@ -2003,7 +2003,7 @@ func TestRefDescriptions(t *testing.T) {
 
 	t.Run("with sub-repo enabled", func(t *testing.T) {
 		checker := getTestSubRepoPermsChecker("file-with-no-access")
-		refDescriptions, err := client.RefDescriptions(ctx, db, repo, checker)
+		refDescriptions, err := client.RefDescriptions(ctx, repo, checker)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
@@ -2030,7 +2030,7 @@ func TestCommitsUniqueToBranch(t *testing.T) {
 	repo := MakeGitRepository(t, gitCommands...)
 
 	t.Run("basic", func(t *testing.T) {
-		commits, err := client.CommitsUniqueToBranch(ctx, db, repo, "my-branch", true, &time.Time{}, nil)
+		commits, err := client.CommitsUniqueToBranch(ctx, repo, "my-branch", true, &time.Time{}, nil)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
@@ -2047,7 +2047,7 @@ func TestCommitsUniqueToBranch(t *testing.T) {
 
 	t.Run("with sub-repo enabled", func(t *testing.T) {
 		checker := getTestSubRepoPermsChecker("file-with-no-access")
-		commits, err := client.CommitsUniqueToBranch(ctx, db, repo, "my-branch", true, &time.Time{}, checker)
+		commits, err := client.CommitsUniqueToBranch(ctx, repo, "my-branch", true, &time.Time{}, checker)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
@@ -2074,7 +2074,7 @@ func TestCommitDate(t *testing.T) {
 	repo := MakeGitRepository(t, gitCommands...)
 
 	t.Run("basic", func(t *testing.T) {
-		_, date, commitExists, err := client.CommitDate(ctx, db, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", nil)
+		_, date, commitExists, err := client.CommitDate(ctx, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", nil)
 		if err != nil {
 			t.Errorf("error fetching CommitDate: %s", err)
 		}
@@ -2088,7 +2088,7 @@ func TestCommitDate(t *testing.T) {
 
 	t.Run("with sub-repo permissions enabled", func(t *testing.T) {
 		checker := getTestSubRepoPermsChecker("file1")
-		_, date, commitExists, err := client.CommitDate(ctx, db, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", checker)
+		_, date, commitExists, err := client.CommitDate(ctx, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", checker)
 		if err != nil {
 			t.Errorf("error fetching CommitDate: %s", err)
 		}
@@ -2163,7 +2163,7 @@ func TestGetCommits(t *testing.T) {
 			nil,
 		}
 
-		commits, err := client.GetCommits(ctx, db, repoCommits, true, nil)
+		commits, err := client.GetCommits(ctx, repoCommits, true, nil)
 		if err != nil {
 			t.Fatalf("unexpected error calling GetCommits: %s", err)
 		}
@@ -2201,7 +2201,7 @@ func TestGetCommits(t *testing.T) {
 			nil,
 		}
 
-		commits, err := client.GetCommits(ctx, db, repoCommits, true, getTestSubRepoPermsChecker("file1", "file3"))
+		commits, err := client.GetCommits(ctx, repoCommits, true, getTestSubRepoPermsChecker("file1", "file3"))
 		if err != nil {
 			t.Fatalf("unexpected error calling GetCommits: %s", err)
 		}
@@ -2215,13 +2215,13 @@ func testCommits(ctx context.Context, label string, repo api.RepoName, opt Commi
 	t.Helper()
 	db := database.NewMockDB()
 	client := NewClient(db)
-	commits, err := client.Commits(ctx, db, repo, opt, checker)
+	commits, err := client.Commits(ctx, repo, opt, checker)
 	if err != nil {
 		t.Errorf("%s: Commits(): %s", label, err)
 		return
 	}
 
-	total, err := client.commitCount(ctx, db, repo, opt)
+	total, err := client.commitCount(ctx, repo, opt)
 	if err != nil {
 		t.Errorf("%s: commitCount(): %s", label, err)
 		return
