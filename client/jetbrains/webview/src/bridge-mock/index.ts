@@ -1,10 +1,10 @@
 import { SearchPatternType } from '@sourcegraph/shared/src/graphql-operations'
 
-import { Search } from '../search/App'
-import { Request } from '../search/jsToJavaBridgeUtil'
+import type { Request } from '../search/js-to-java-bridge'
+import type { Search } from '../search/types'
 
 let savedSearch: Search = {
-    query: '',
+    query: 'r:github.com/sourcegraph/sourcegraph jetbrains',
     caseSensitive: false,
     patternType: SearchPatternType.literal,
     selectedSearchContextSpec: 'global',
@@ -64,39 +64,45 @@ function handleRequest(
         case 'preview': {
             const { content, absoluteOffsetAndLengths } = request.arguments
 
-            const start = absoluteOffsetAndLengths[0][0]
-            const length = absoluteOffsetAndLengths[0][1]
+            const start = absoluteOffsetAndLengths.length > 0 ? absoluteOffsetAndLengths[0][0] : 0
+            const length = absoluteOffsetAndLengths.length > 0 ? absoluteOffsetAndLengths[0][1] : 0
 
-            let htmlContent: string = escapeHTML(content.slice(0, start))
-            htmlContent += `<span id="code-details-highlight">${escapeHTML(
-                content.slice(start, start + length)
-            )}</span>`
-            htmlContent += escapeHTML(content.slice(start + length))
+            let htmlContent: string
+            if (content === null) {
+                htmlContent = '(No preview available)'
+            } else {
+                const decodedContent = atob(content)
+                htmlContent = escapeHTML(decodedContent.slice(0, start))
+                htmlContent += `<span id="code-details-highlight">${escapeHTML(
+                    decodedContent.slice(start, start + length)
+                )}</span>`
+                htmlContent += escapeHTML(decodedContent.slice(start + length))
+            }
 
             codeDetailsNode.innerHTML = htmlContent
 
             document.querySelector('#code-details-highlight')?.scrollIntoView({ block: 'center', inline: 'center' })
 
-            onSuccessCallback('{}')
+            onSuccessCallback('null')
             break
         }
 
         case 'clearPreview': {
             codeDetailsNode.textContent = ''
-            onSuccessCallback('{}')
+            onSuccessCallback('null')
             break
         }
 
         case 'open': {
             const { path } = request.arguments
             alert(`Opening ${path}`)
-            onSuccessCallback('{}')
+            onSuccessCallback('null')
             break
         }
 
         case 'saveLastSearch': {
             savedSearch = request.arguments
-            onSuccessCallback('{}')
+            onSuccessCallback('null')
             break
         }
 
@@ -106,7 +112,7 @@ function handleRequest(
         }
 
         case 'indicateFinishedLoading': {
-            onSuccessCallback('{}')
+            onSuccessCallback('null')
             break
         }
 
@@ -128,7 +134,9 @@ iframeNode.addEventListener('load', () => {
 
 function escapeHTML(unsafe: string): string {
     return unsafe.replace(
+        // eslint-disable-next-line no-control-regex
         /[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00FF]/g,
-        c => '&#' + ('000' + c.charCodeAt(0)).slice(-4) + ';'
+        // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+        char => '&#' + ('000' + char.charCodeAt(0)).slice(-4) + ';'
     )
 }

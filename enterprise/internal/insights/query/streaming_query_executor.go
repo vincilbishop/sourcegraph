@@ -14,7 +14,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/database"
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
@@ -23,11 +22,11 @@ type StreamingQueryExecutor struct {
 	justInTimeExecutor
 }
 
-func NewStreamingExecutor(postgres, insightsDb dbutil.DB, clock func() time.Time) *StreamingQueryExecutor {
+func NewStreamingExecutor(postgres database.DB, clock func() time.Time) *StreamingQueryExecutor {
 	return &StreamingQueryExecutor{
 		justInTimeExecutor: justInTimeExecutor{
 			db:        database.NewDB(postgres),
-			repoStore: database.Repos(postgres),
+			repoStore: postgres.Repos(),
 			filter:    &compression.NoopFilter{},
 			clock:     clock,
 		},

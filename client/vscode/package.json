@@ -2,7 +2,7 @@
   "private": true,
   "name": "@sourcegraph/vscode",
   "displayName": "Sourcegraph",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Sourcegraph for VS Code",
   "publisher": "sourcegraph",
   "sideEffects": false,
@@ -180,11 +180,13 @@
       "editor/context": [
         {
           "command": "sourcegraph.openInBrowser",
-          "group": "sourcegraph"
+          "group": "sourcegraph",
+          "label": "sourcegraph"
         },
         {
           "command": "sourcegraph.copyFileLink",
-          "group": "sourcegraph"
+          "group": "sourcegraph",
+          "label": "sourcegraph"
         },
         {
           "command": "sourcegraph.selectionSearchWeb",

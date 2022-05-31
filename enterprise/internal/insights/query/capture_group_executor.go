@@ -16,7 +16,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
@@ -26,11 +25,11 @@ type CaptureGroupExecutor struct {
 	computeSearch func(ctx context.Context, query string) ([]GroupedResults, error)
 }
 
-func NewCaptureGroupExecutor(postgres, insightsDb dbutil.DB, clock func() time.Time) *CaptureGroupExecutor {
+func NewCaptureGroupExecutor(postgres database.DB, clock func() time.Time) *CaptureGroupExecutor {
 	executor := CaptureGroupExecutor{
 		justInTimeExecutor: justInTimeExecutor{
 			db:        database.NewDB(postgres),
-			repoStore: database.Repos(postgres),
+			repoStore: postgres.Repos(),
 			// filter:    compression.NewHistoricalFilter(true, clock().Add(time.Hour*24*365*-1), insightsDb),
 			filter: &compression.NoopFilter{},
 			clock:  clock,
