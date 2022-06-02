@@ -3,6 +3,7 @@ import React, { useCallback } from 'react'
 import classNames from 'classnames'
 import CodeBracketsIcon from 'mdi-react/CodeBracketsIcon'
 import FormatLetterCaseIcon from 'mdi-react/FormatLetterCaseIcon'
+import LightningBoltIcon from 'mdi-react/LightningBoltIcon'
 import RegexIcon from 'mdi-react/RegexIcon'
 
 import { isErrorLike, isMacPlatform } from '@sourcegraph/common'
@@ -75,7 +76,9 @@ export const Toggles: React.FunctionComponent<React.PropsWithChildren<TogglesPro
     } = props
 
     const submitOnToggle = useCallback(
-        (args: { newPatternType: SearchPatternType } | { newCaseSensitivity: boolean }): void => {
+        (
+            args: { newPatternType: SearchPatternType } | { newCaseSensitivity: boolean } | { newPowerUser: boolean }
+        ): void => {
             submitSearch?.({
                 source: 'filter',
                 patternType: 'newPatternType' in args ? args.newPatternType : patternType,
@@ -115,9 +118,46 @@ export const Toggles: React.FunctionComponent<React.PropsWithChildren<TogglesPro
         submitOnToggle({ newPatternType })
     }, [patternType, setPatternType, settingsCascade.final, submitOnToggle])
 
+    const togglePowerUser = useCallback((): void => {
+        const newPatternType =
+            patternType === SearchPatternType.lucky ? SearchPatternType.literal : SearchPatternType.lucky
+
+        setPatternType(newPatternType)
+    }, [patternType, setPatternType])
+
+    const defaultPatternTypeValue =
+        settingsCascade.final &&
+        !isErrorLike(settingsCascade.final) &&
+        (settingsCascade.final['search.defaultPatternType'] as SearchPatternType)
+
+    const luckySearchEnabled = defaultPatternTypeValue === SearchPatternType.lucky
+
     const fullQuery = getFullQuery(navbarSearchQuery, selectedSearchContextSpec || '', caseSensitive, patternType)
 
-    return (
+    return patternType === SearchPatternType.lucky ? (
+        <div className={classNames(className, styles.toggleContainer)}>
+            <QueryInputToggle
+                title="Expert user"
+                isActive={false}
+                onToggle={togglePowerUser}
+                icon={LightningBoltIcon}
+                className="test-power-user-toggle"
+                activeClassName="test-power-user-toggle--active"
+                disableOn={[]}
+            />
+            {showCopyQueryButton && (
+                <>
+                    <div className={styles.separator} />
+                    <CopyQueryButton
+                        fullQuery={fullQuery}
+                        keyboardShortcutForFullCopy={KEYBOARD_SHORTCUT_COPY_FULL_QUERY}
+                        isMacPlatform={isMacPlatform()}
+                        className={classNames(styles.toggle, styles.copyQueryButton)}
+                    />
+                </>
+            )}
+        </div>
+    ) : (
         <div className={classNames(className, styles.toggleContainer)}>
             <QueryInputToggle
                 title="Case sensitivity"
@@ -171,6 +211,17 @@ export const Toggles: React.FunctionComponent<React.PropsWithChildren<TogglesPro
                             reason: 'Query already contains one or more patterntype subexpressions',
                         },
                     ]}
+                />
+            )}
+            {luckySearchEnabled && (
+                <QueryInputToggle
+                    title="Expert user"
+                    isActive={true}
+                    onToggle={togglePowerUser}
+                    icon={LightningBoltIcon}
+                    className="test-power-user-toggle"
+                    activeClassName="test-power-user-toggle--active"
+                    disableOn={[]}
                 />
             )}
             {showCopyQueryButton && (
