@@ -82,6 +82,7 @@ func (s *SequentialJob) Run(ctx context.Context, clients job.RuntimeClients, par
 		maxAlerter.Add(alert)
 		errs = errors.Append(errs, err)
 	}
+
 	return maxAlerter.Alert, errs
 }
 

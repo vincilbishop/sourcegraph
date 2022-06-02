@@ -1,85 +1,114 @@
 package jobutil
 
 import (
-	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
-
 	"github.com/sourcegraph/sourcegraph/internal/search/job"
 	"github.com/sourcegraph/sourcegraph/internal/search/query"
 	"github.com/sourcegraph/sourcegraph/internal/search/run"
 )
 
-// NewFeelingLuckyJob generates an opportunistic search query by applying various rules on
-// the input string.
-func NewFeelingLuckyJob(inputs *run.SearchInputs, plan query.Plan) []job.Job {
+// NewFeelingLuckySearchJob generates an opportunistic search query by applying
+// various rules in sequence, transforming the original input plan into various
+// queries that alter its interpretation (e.g., search literally for quotes or
+// not, attempt to search the pattern as a regexp, and so on). Generated queries
+// are appended to the input plan, such that the resulting job has the following
+// properties:
+//
+// - Every basic query in the input plan will be run (ordered before) any
+// generated, opportunistic query. This means there is a kind of ranking that
+// prefers the most precise interpretation of inputs first (and its results),
+// and only after that starts to generate queries with looser or alternative
+// interpretations (these interpretations are determined by the application
+// order of rules.
+//
+// - The application order of rules is deterministic. This means the query
+// order, and therefore runtime execution, outputs the same search results for
+// the same inputs. I.e., there is no random choice when applying a rule.
+func NewFeelingLuckySearchJob(inputs *run.SearchInputs, plan query.Plan) job.Job {
 	children := make([]job.Job, 0, len(plan))
+
+	// Sequence all basic queries in the plan to run first.
 	for _, b := range plan {
-		sequentialJobs := []job.Job{}
-		for _, newBasic := range BuildBasic(b) { // Basic queries generated are sequenced.
+		child, err := NewBasicJob(inputs, b)
+		if err != nil {
+			panic("TODO")
+		}
+		children = append(children, child)
+	}
+
+	// Sequence all generated queries afterward the first.
+	for _, b := range plan {
+		for _, newBasic := range applyRulesList(b, rulesList...) {
 			child, err := NewBasicJob(inputs, newBasic)
 			if err != nil {
 				panic("generated an invalid basic query D:")
 			}
-			sequentialJobs = append(sequentialJobs, child)
+			children = append(children, child)
 		}
-		children = append(children, NewSequentialJob(sequentialJobs...))
-		// ^ issue is dedupe, check: node represents a function
-		// ^ deduplication? also check repo:github.com/sourcegraph/sourcegraph "patternType"
-		// children = append(children, NewOrJob(sequentialJobs...))
 	}
-	return children
+	return NewSequentialJob(true, children...)
 }
 
-func BuildBasic(b query.Basic) []query.Basic {
-	bs := []query.Basic{b} // Include incoming query.
-	if g := UnquotedPatterns(b); g != nil {
-		bs = append(bs, *g)
-	}
-	if g := UnorderedPatterns(b); g != nil {
-		bs = append(bs, *g)
-	}
-	// compose unquoted => unordered separately
-	if g := UnquotedPatterns(b); g != nil {
-		if h := UnorderedPatterns(*g); h != nil {
-			bs = append(bs, *h)
+var rulesList = [][]rule{
+	[]rule{unquotePatterns},
+}
+
+// rule represents a transformation function on a Basic query. Applying rules
+// cannot fail: either they apply and produce a valid, non-nil, Basic query, or
+// they cannot apply, in which case they return nil. See the `unquotePatterns`
+// rule for an example.
+type rule func(query.Basic) *query.Basic
+
+// applyRulesList takes a list of lists of rules. The order of rules in the inner
+// lists represent rule composition. Each list of rules in the outer list
+// represent one possible query production, if the sequence of the rules in this
+// list apply successfully. Example:
+//
+// If we have input rule list  [ [ R1, R2 ], [ R2 ] ] and input query B0, then:
+//
+// - If both inner lists apply, we get an output [ B1, B2] where B1 is generated
+//   from applying R1 then R2, and B2 is generated from just applying R2.
+// - If only the first inner list applies, R1 then R2, we get the output [ B1 ]
+// - If only the second inner list applies, R2 on its own, we get the output [ B2 ]
+func applyRulesList(b query.Basic, rulesList ...[]rule) []query.Basic {
+	bs := []query.Basic{}
+	for _, l := range rulesList {
+		if generated := applyRules(b, l...); generated != nil {
+			bs = append(bs, *generated)
 		}
-	}
-	if g := PatternsAsRepoPaths(b); g != nil {
-		if h := UnquotedPatterns(*g); h != nil {
-			if i := UnorderedPatterns(*h); i != nil {
-				bs = append(bs, *i)
-			}
-			bs = append(bs, *h)
-		}
-		bs = append(bs, *g)
 	}
 	return bs
 }
 
-// UnquotePatterns unquotes quoted patterns in queries (removing
-// quotes, and honoring escape sequences).
-func UnquotedPatterns(b query.Basic) *query.Basic {
-	// Go all the way back to the original string, and parse it as regex to discover quoted patterns.
+// applyRules applies every rule in sequence to `b`. If any rule does not apply, it returns nil.
+func applyRules(b query.Basic, rules ...rule) *query.Basic {
+	if len(rules) == 0 {
+		return &b
+	}
+	if next := rules[0](b); next != nil {
+		return applyRules(*next, rules[1:]...)
+	}
+	return nil
+}
+
+// unquotePatterns is a rule that unquotes all patterns in the input query (it
+// removes quotes, and honors escape sequences inside quoted values).
+func unquotePatterns(b query.Basic) *query.Basic {
+	// Go back all the way to the raw tree representation :-). We just parse
+	// the string as regex, since parsing with regex annotates quoted
+	// patterns.
 	rawParseTree, err := query.Parse(query.StringHuman(b.ToParseTree()), query.SearchTypeRegex)
 	if err != nil {
 		return nil
 	}
 
+	changed := false // track whether we've successfully changed any pattern, which means this rule applies.
 	newParseTree := query.MapPattern(rawParseTree, func(value string, negated bool, annotation query.Annotation) query.Node {
 		if annotation.Labels.IsSet(query.Quoted) {
-			fmt.Printf("see quoted: %s\n", value)
-			v, err := strconv.Unquote(value) // Lazy--shouldn't actually unquote `` but whatever!!
-			if err != nil {
-				return query.Pattern{
-					Value:      value,
-					Negated:    negated,
-					Annotation: annotation,
-				}
-			}
+			changed = true
+			annotation.Labels.Unset(query.Quoted)
+			annotation.Labels.Set(query.Literal)
 			return query.Pattern{
-				Value:      v,
+				Value:      value,
 				Negated:    negated,
 				Annotation: annotation,
 			}
@@ -91,6 +120,11 @@ func UnquotedPatterns(b query.Basic) *query.Basic {
 		}
 	})
 
+	if !changed {
+		// No unquoting happened, so we don't run the search.
+		return nil
+	}
+
 	newNodes, err := query.Sequence(query.For(query.SearchTypeLiteralDefault))(newParseTree)
 	if err != nil {
 		return nil
@@ -98,100 +132,8 @@ func UnquotedPatterns(b query.Basic) *query.Basic {
 
 	newBasic, err := query.ToBasicQuery(newNodes)
 	if err != nil {
-		panic(err.Error())
+		return nil
 	}
 
 	return &newBasic
-}
-
-// UnorderedPatterns generates a query that interprets all recognized patterns
-// as unordered terms (`and`-ed terms). Brittle assumption: only for queries in
-// default/literal mode, where all terms are space-separated and spaces are
-// unescapable, implying we can obtain patterns with a split on space.
-func UnorderedPatterns(b query.Basic) *query.Basic {
-	var andPatterns []query.Node
-	query.VisitPattern([]query.Node{b.Pattern}, func(value string, negated bool, annotation query.Annotation) {
-		if negated {
-			// append negated terms as-is.
-			andPatterns = append(andPatterns, query.Pattern{
-				Value:      value,
-				Negated:    negated,
-				Annotation: annotation,
-			})
-			return
-		}
-		for _, p := range strings.Split(value, " ") {
-			andPatterns = append(andPatterns, query.Pattern{
-				Value:      p,
-				Negated:    negated,
-				Annotation: annotation, // danger: preserves invalid range
-			})
-		}
-	})
-	return &query.Basic{
-		Parameters: b.Parameters,
-		Pattern:    query.Operator{Kind: query.And, Operands: andPatterns, Annotation: query.Annotation{}},
-	}
-}
-
-func PatternsAsRepoPaths(b query.Basic) *query.Basic {
-	rawParseTree, err := query.Parse(query.StringHuman(b.ToParseTree()), query.SearchTypeLiteralDefault) // We're going all the way back baby.
-	if err != nil {
-		return nil
-	}
-
-	repoParams := []query.Node{}
-
-	// gotta collect terms to promote as repo, becauase doing it in-place
-	// creates patterns inside concat nodes, which just makes life more
-	// difficult. Trying to Map concat nodes is also a pain. Just delete
-	// patterns, and add the repo filters back.
-	newParseTree := query.MapPattern(rawParseTree, func(value string, negated bool, annotation query.Annotation) query.Node {
-		r := regexp.MustCompile(`(https://)?github.com/.*`)
-		v := r.FindString(value)
-		if v == "" {
-			return query.Pattern{
-				Value:      value,
-				Negated:    negated,
-				Annotation: annotation,
-			}
-		}
-		v = strings.TrimPrefix(v, "https://")
-		v = strings.TrimPrefix(v, "github.com/")
-		v = strings.TrimSuffix(v, "/")
-		repoParams = append(repoParams, query.Parameter{
-			Field:   query.FieldRepo,
-			Value:   v,
-			Negated: negated,
-		})
-		return nil
-	})
-
-	// Gotta reduce this, or we won't be able to partition to basic
-	// query--the basic partitioning is not super smart.
-	newParseTree = query.NewOperator(append(newParseTree, repoParams...), query.And)
-	newNodes, err := query.Sequence(query.For(query.SearchTypeLiteralDefault))(newParseTree)
-	if err != nil {
-		return nil
-	}
-
-	newBasic, err := query.ToBasicQuery(newNodes)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return &newBasic
-}
-
-func ParametersToNodes(parameters []query.Parameter) []query.Node {
-	var nodes []query.Node
-	for _, n := range parameters {
-		nodes = append(nodes, query.Node(n))
-	}
-	return nodes
-}
-
-func NodesToParameters(nodes []query.Node) []query.Parameter {
-	b, _ := query.ToBasicQuery(nodes)
-	return b.Parameters
 }

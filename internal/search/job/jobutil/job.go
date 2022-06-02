@@ -32,14 +32,17 @@ import (
 // NewPlanJob converts a query.Plan into its job tree representation.
 func NewPlanJob(inputs *run.SearchInputs, plan query.Plan) (job.Job, error) {
 	children := make([]job.Job, 0, len(plan))
-	for _, q := range plan {
-		child, err := NewBasicJob(inputs, q)
-		if err != nil {
-			return nil, err
+	if inputs.PatternType == query.SearchTypeLucky {
+		children = []job.Job{NewFeelingLuckySearchJob(inputs, plan)}
+	} else {
+		for _, q := range plan {
+			child, err := NewBasicJob(inputs, q)
+			if err != nil {
+				return nil, err
+			}
+			children = append(children, child)
 		}
-		children = append(children, child)
 	}
-	children = NewFeelingLuckyJob(inputs, plan)
 	return NewAlertJob(inputs, NewOrJob(children...)), nil
 }
 
