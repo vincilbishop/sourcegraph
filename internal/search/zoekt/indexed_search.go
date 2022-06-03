@@ -401,7 +401,7 @@ func sendMatches(event *zoekt.SearchResult, getRepoInputRev repoRevFunc, typ sea
 }
 
 func zoektFileMatchToMultilineMatches(file *zoekt.FileMatch) result.ChunkMatches {
-	hms := make(result.ChunkMatches, 0, len(file.LineMatches))
+	cms := make(result.ChunkMatches, 0, len(file.LineMatches))
 
 	for _, l := range file.LineMatches {
 		if l.FileName {
@@ -412,7 +412,7 @@ func zoektFileMatchToMultilineMatches(file *zoekt.FileMatch) result.ChunkMatches
 			offset := utf8.RuneCount(l.Line[:m.LineOffset])
 			length := utf8.RuneCount(l.Line[m.LineOffset : m.LineOffset+m.MatchLength])
 
-			hms = append(hms, result.ChunkMatch{
+			cms = append(cms, result.ChunkMatch{
 				Content: string(l.Line),
 				// zoekt line numbers are 1-based rather than 0-based so subtract 1
 				ContentStart: result.Location{
@@ -436,7 +436,39 @@ func zoektFileMatchToMultilineMatches(file *zoekt.FileMatch) result.ChunkMatches
 		}
 	}
 
-	return hms
+	for _, cm := range file.ChunkMatches {
+		if cm.FileName {
+			continue
+		}
+
+		ranges := make([]result.Range, 0, len(cm.Ranges))
+		for _, r := range cm.Ranges {
+			ranges = append(ranges, result.Range{
+				Start: result.Location{
+					Offset: int(r.Start.ByteOffset),
+					Line:   int(r.Start.LineNumber) - 1,
+					Column: int(r.Start.Column) - 1,
+				},
+				End: result.Location{
+					Offset: int(r.End.ByteOffset),
+					Line:   int(r.End.LineNumber) - 1,
+					Column: int(r.End.Column) - 1,
+				},
+			})
+		}
+
+		cms = append(cms, result.ChunkMatch{
+			Content: string(cm.Content),
+			ContentStart: result.Location{
+				Offset: int(cm.ContentStart.ByteOffset),
+				Line:   int(cm.ContentStart.LineNumber) - 1,
+				Column: int(cm.ContentStart.Column) - 1,
+			},
+			Ranges: ranges,
+		})
+	}
+
+	return cms
 }
 
 func zoektFileMatchToSymbolResults(repoName types.MinimalRepo, inputRev string, file *zoekt.FileMatch) []*result.SymbolMatch {
