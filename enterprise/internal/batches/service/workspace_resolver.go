@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/gobwas/glob"
@@ -666,8 +667,18 @@ func findWorkspaces(
 				fetchWorkspace = false
 			}
 
+			paths := []string{}
+			for _, probe := range workspace.RepoRevision.FileMatches {
+				if strings.HasPrefix(probe, path) {
+					paths = append(paths, probe)
+				}
+			}
+
+			repoRevision := *workspace.RepoRevision
+			repoRevision.FileMatches = paths
+
 			workspaces = append(workspaces, &RepoWorkspace{
-				RepoRevision:       workspace.RepoRevision,
+				RepoRevision:       &repoRevision,
 				Path:               path,
 				OnlyFetchWorkspace: fetchWorkspace,
 			})
