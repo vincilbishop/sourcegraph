@@ -1,6 +1,8 @@
 package jobutil
 
 import (
+	"regexp"
+
 	"github.com/sourcegraph/sourcegraph/internal/search/job"
 	"github.com/sourcegraph/sourcegraph/internal/search/query"
 	"github.com/sourcegraph/sourcegraph/internal/search/run"
@@ -32,6 +34,7 @@ func NewFeelingLuckySearchJob(inputs *run.SearchInputs, plan query.Plan) []job.J
 var rulesList = [][]rule{
 	{unquotePatterns},
 	{unorderedPatterns},
+	{uriAsFilter},
 }
 
 // rule represents a transformation function on a Basic query. Applying rules
@@ -176,4 +179,110 @@ func mapConcat(q []query.Node) ([]query.Node, bool) {
 		mapped = append(mapped, node)
 	}
 	return mapped, changed
+}
+
+// uriAsRepoFilter maps patterns that conform to a certain URL shape to a repo
+// and/or file filters. See implementation for pattern maps.
+func uriAsFilter(b query.Basic) *query.Basic {
+	rawParseTree, err := query.Parse(query.StringHuman(b.ToParseTree()), query.SearchTypeRegex)
+	if err != nil {
+		return nil
+	}
+
+	mapRepo := map[string]string{
+		`(?:https:\/\/)?(github\.com|gitlab\.com)\/([^\/]+)\/?$`:                                               "^$1/$2$",
+		`(?:https:\/\/)?(github\.com|gitlab\.com)\/([^\/]+)\/([^\/]+)\/?$`:                                     "^$1/$2/$3$",
+		`(?:https:\/\/)?(github\.com|gitlab\.com)\/([^\/]+)\/([^\/]+)\/(?:(?:-\/)?blob\/)?(?:[^\/]+)\/([^#]+)`: "^$1/$2/$3$",
+	}
+
+	mapPath := map[string]string{
+		`(?:https:\/\/)?(github\.com|gitlab\.com)\/([^\/]+)\/([^\/]+)\/(?:(?:-\/)?blob\/)?(?:[^\/]+)\/([^#]+)`: "$4",
+	}
+
+	mapRev := map[string]string{
+		`(?:https:\/\/)?(github\.com|gitlab\.com)\/([^\/]+)\/([^\/]+)\/(?:(?:-\/)?blob\/)([^\/]+)\/(?:[^#]+)`: "$4",
+	}
+
+	filterParams := []query.Node{}
+	changed := false
+	newParseTree := query.MapPattern(rawParseTree, func(value string, negated bool, annotation query.Annotation) query.Node {
+
+		// Map pattern to `repo` filter
+		for pattern, template := range mapRepo {
+			if repoValue, ok := applySubstitution(pattern, template, value); ok {
+				changed = true
+				filterParams = append(filterParams, query.Parameter{
+					Field:   query.FieldRepo,
+					Value:   repoValue,
+					Negated: negated,
+				})
+			}
+		}
+
+		// Map pattern to `rev` filter
+		for pattern, template := range mapRev {
+			if revValue, ok := applySubstitution(pattern, template, value); ok {
+				changed = true
+				filterParams = append(filterParams, query.Parameter{
+					Field:   query.FieldRev,
+					Value:   revValue,
+					Negated: negated,
+				})
+			}
+		}
+
+		// Map pattern to `path` filter
+		for pattern, template := range mapPath {
+			if pathValue, ok := applySubstitution(pattern, template, value); ok {
+				changed = true
+				filterParams = append(filterParams, query.Parameter{
+					Field:   query.FieldFile,
+					Value:   pathValue,
+					Negated: negated,
+				})
+			}
+		}
+
+		if changed {
+			// We collected params, so delete pattern. We're
+			// going to add those parameters after. We can't
+			// map patterns in-place because that might
+			// create parameters in concat nodes.
+			return nil
+		}
+
+		return query.Pattern{
+			Value:      value,
+			Negated:    negated,
+			Annotation: annotation,
+		}
+	})
+
+	if !changed {
+		return nil
+	}
+
+	newParseTree = query.NewOperator(append(newParseTree, filterParams...), query.And) // Reduce with NewOperator to obtain valid partitioning.
+	newNodes, err := query.Sequence(query.For(query.SearchTypeLiteralDefault))(newParseTree)
+	if err != nil {
+		return nil
+	}
+
+	newBasic, err := query.ToBasicQuery(newNodes)
+	if err != nil {
+		return nil
+	}
+
+	return &newBasic
+}
+
+func applySubstitution(pattern, template, content string) (string, bool) {
+	result := []byte{}
+	matched := false
+	r := regexp.MustCompile(pattern)
+	for _, submatches := range r.FindAllStringSubmatchIndex(content, -1) {
+		matched = true
+		result = r.ExpandString(result, template, content, submatches)
+	}
+	return string(result), matched
 }

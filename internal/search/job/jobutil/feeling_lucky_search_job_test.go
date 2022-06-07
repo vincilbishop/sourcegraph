@@ -30,3 +30,18 @@ func TestNewFeelingLuckySearchJob(t *testing.T) {
 		autogold.Equal(t, autogold.Raw(test(`context:global parse func`)))
 	})
 }
+
+func TestUriAsFilter(t *testing.T) {
+	test := func(q string) string {
+		plan, _ := query.Pipeline(query.InitLiteral(q))
+		b := uriAsFilter(plan[0])
+		if b == nil {
+			return "nothing"
+		}
+		return b.StringHuman()
+	}
+
+	t.Run("uri to repo rule", func(t *testing.T) {
+		autogold.Equal(t, autogold.Raw(test(`https://github.com/sourcegraph/sourcegraph/blob/main/cmd/loadtest/build.sh#13`)))
+	})
+}

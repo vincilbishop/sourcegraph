@@ -1,0 +1,1 @@
+repo:^github.com/sourcegraph/sourcegraph$ rev:main file:cmd/loadtest/build.sh
