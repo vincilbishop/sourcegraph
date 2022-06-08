@@ -214,14 +214,6 @@ func TestBitbucketServerSource_WithAuthenticator(t *testing.T) {
 	})
 }
 
-func TestBitbucketServerSource_ListRepos(t *testing.T) {
-	TestBitbucketServerSource_ListByReposOnly(t)
-	TestBitbucketServerSource_ListByRepositoryQueryDefault(t)
-	TestBitbucketServerSource_ListByRepositoryQueryAll(t)
-	TestBitbucketServerSource_ListByRepositoryQueryNone(t)
-	TestBitbucketServerSource_ListByProjectKey(t)
-}
-
 func TestBitbucketServerSource_ListByReposOnly(t *testing.T) {
 	repos := GetReposFromTestdata(t)
 
@@ -245,28 +237,30 @@ func TestBitbucketServerSource_ListByReposOnly(t *testing.T) {
 	defer server.Close()
 
 	cases, svc := GetConfig(t, server)
-	for _, config := range cases {
-		s, err := newBitbucketServerSource(&svc, config, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for name, config := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, err := newBitbucketServerSource(&svc, config, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		s.config.Repos = []string{
-			"SG/go-langserver",
-			"SG/python-langserver",
-			"SG/python-langserver-fork",
-			"~KEEGAN/rgp",
-			"~KEEGAN/rgp-unavailable",
-		}
+			s.config.Repos = []string{
+				"SG/go-langserver",
+				"SG/python-langserver",
+				"SG/python-langserver-fork",
+				"~KEEGAN/rgp",
+				"~KEEGAN/rgp-unavailable",
+			}
 
-		ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFunction()
+			ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFunction()
 
-		results := make(chan SourceResult, 10)
-		defer close(results)
+			results := make(chan SourceResult, 10)
+			defer close(results)
 
-		s.ListRepos(ctxWithTimeout, results)
-		VerifyData(t, ctxWithTimeout, 4, results)
+			s.ListRepos(ctxWithTimeout, results)
+			VerifyData(t, ctxWithTimeout, 4, results)
+		})
 	}
 }
 
@@ -316,28 +310,30 @@ func TestBitbucketServerSource_ListByRepositoryQueryDefault(t *testing.T) {
 	defer server.Close()
 
 	cases, svc := GetConfig(t, server)
-	for _, config := range cases {
-		s, err := newBitbucketServerSource(&svc, config, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for name, config := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, err := newBitbucketServerSource(&svc, config, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		s.config.RepositoryQuery = []string{
-			"?projectName=go-langserver",
-			"?projectName=python-langserver",
-			"?projectName=python-langserver-fork",
-			"?projectName=rgp",
-			"?projectName=rgp-unavailable",
-		}
+			s.config.RepositoryQuery = []string{
+				"?projectName=go-langserver",
+				"?projectName=python-langserver",
+				"?projectName=python-langserver-fork",
+				"?projectName=rgp",
+				"?projectName=rgp-unavailable",
+			}
 
-		ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFunction()
+			ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFunction()
 
-		results := make(chan SourceResult, 20)
-		defer close(results)
+			results := make(chan SourceResult, 20)
+			defer close(results)
 
-		s.ListRepos(ctxWithTimeout, results)
-		VerifyData(t, ctxWithTimeout, 4, results)
+			s.ListRepos(ctxWithTimeout, results)
+			VerifyData(t, ctxWithTimeout, 4, results)
+		})
 	}
 }
 
@@ -387,24 +383,26 @@ func TestBitbucketServerSource_ListByRepositoryQueryAll(t *testing.T) {
 	defer server.Close()
 
 	cases, svc := GetConfig(t, server)
-	for _, config := range cases {
-		s, err := newBitbucketServerSource(&svc, config, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for name, config := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, err := newBitbucketServerSource(&svc, config, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		s.config.RepositoryQuery = []string{
-			"all",
-		}
+			s.config.RepositoryQuery = []string{
+				"all",
+			}
 
-		ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFunction()
+			ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFunction()
 
-		results := make(chan SourceResult, 20)
-		defer close(results)
+			results := make(chan SourceResult, 20)
+			defer close(results)
 
-		s.ListRepos(ctxWithTimeout, results)
-		VerifyData(t, ctxWithTimeout, 4, results)
+			s.ListRepos(ctxWithTimeout, results)
+			VerifyData(t, ctxWithTimeout, 4, results)
+		})
 	}
 }
 
@@ -454,24 +452,26 @@ func TestBitbucketServerSource_ListByRepositoryQueryNone(t *testing.T) {
 	defer server.Close()
 
 	cases, svc := GetConfig(t, server)
-	for _, config := range cases {
-		s, err := newBitbucketServerSource(&svc, config, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for name, config := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, err := newBitbucketServerSource(&svc, config, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		s.config.RepositoryQuery = []string{
-			"none",
-		}
+			s.config.RepositoryQuery = []string{
+				"none",
+			}
 
-		ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFunction()
+			ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFunction()
 
-		results := make(chan SourceResult, 20)
-		defer close(results)
+			results := make(chan SourceResult, 20)
+			defer close(results)
 
-		s.ListRepos(ctxWithTimeout, results)
-		VerifyData(t, ctxWithTimeout, 0, results)
+			s.ListRepos(ctxWithTimeout, results)
+			VerifyData(t, ctxWithTimeout, 0, results)
+		})
 	}
 }
 
@@ -516,25 +516,27 @@ func TestBitbucketServerSource_ListByProjectKey(t *testing.T) {
 	defer server.Close()
 
 	cases, svc := GetConfig(t, server)
-	for _, config := range cases {
-		s, err := newBitbucketServerSource(&svc, config, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for name, config := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, err := newBitbucketServerSource(&svc, config, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		s.config.ProjectKeys = []string{
-			"SG",
-			"~KEEGAN",
-		}
+			s.config.ProjectKeys = []string{
+				"SG",
+				"~KEEGAN",
+			}
 
-		ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFunction()
+			ctxWithTimeout, cancelFunction := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFunction()
 
-		results := make(chan SourceResult, 20)
-		defer close(results)
+			results := make(chan SourceResult, 20)
+			defer close(results)
 
-		s.ListRepos(ctxWithTimeout, results)
-		VerifyData(t, ctxWithTimeout, 4, results)
+			s.ListRepos(ctxWithTimeout, results)
+			VerifyData(t, ctxWithTimeout, 4, results)
+		})
 	}
 }
 
