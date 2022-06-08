@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 
-import VisuallyHidden from '@reach/visually-hidden'
+import { VisuallyHidden } from '@reach/visually-hidden'
 import * as H from 'history'
 import { RouteComponentProps } from 'react-router'
 import { Observable } from 'rxjs'
@@ -9,7 +9,7 @@ import { startWith, catchError, tap } from 'rxjs/operators'
 import { asError, isErrorLike } from '@sourcegraph/common'
 import { Scalars } from '@sourcegraph/shared/src/graphql-operations'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { PageHeader, Link, LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
+import { PageHeader, Link, LoadingSpinner, useObservable, Icon } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
 import { withAuthenticatedUser } from '../../auth/withAuthenticatedUser'
@@ -25,6 +25,8 @@ import {
     deleteCodeMonitor as _deleteCodeMonitor,
 } from './backend'
 import { CodeMonitorForm } from './components/CodeMonitorForm'
+
+import styles from './CodeMonitorPage.module.scss'
 
 interface ManageCodeMonitorPageProps extends RouteComponentProps<{ id: Scalars['ID'] }>, ThemeProps {
     authenticatedUser: AuthenticatedUser
@@ -100,7 +102,6 @@ const AuthenticatedManageCodeMonitorPage: React.FunctionComponent<
         <div className="container col-8">
             <PageTitle title="Manage code monitor" />
             <PageHeader
-                path={[{ icon: CodeMonitoringLogo, to: '/code-monitoring' }, { text: 'Manage code monitor' }]}
                 description={
                     <>
                         Code monitors watch your code for specific triggers and run actions in response.{' '}
@@ -110,7 +111,14 @@ const AuthenticatedManageCodeMonitorPage: React.FunctionComponent<
                         </Link>
                     </>
                 }
-            />
+            >
+                <PageHeader.Heading as="h2" styleAs="h1">
+                    <PageHeader.Breadcrumb to="/code-monitoring">
+                        <Icon role="img" className={styles.icon} as={CodeMonitoringLogo} aria-label="Code monitoring" />
+                    </PageHeader.Breadcrumb>
+                    <PageHeader.Breadcrumb>Manage code monitor</PageHeader.Breadcrumb>
+                </PageHeader.Heading>
+            </PageHeader>
             {codeMonitorOrError === 'loading' && <LoadingSpinner />}
             {codeMonitorOrError && !isErrorLike(codeMonitorOrError) && codeMonitorOrError !== 'loading' && (
                 <>
