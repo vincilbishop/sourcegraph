@@ -229,7 +229,7 @@ export const ActionEditor: React.FunctionComponent<React.PropsWithChildren<Actio
                 >
                     <div className="d-flex justify-content-between align-items-center w-100">
                         <div>
-                            <VisuallyHidden>{`Edit action: ${label}`}</VisuallyHidden>
+                            <VisuallyHidden>Edit action: {label}</VisuallyHidden>
                             <div className={classNames('font-weight-bold', !completed && styles.cardLink)}>{title}</div>
                             {completed ? (
                                 <span

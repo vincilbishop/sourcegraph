@@ -5,7 +5,7 @@ import * as H from 'history'
 import { Observable } from 'rxjs'
 
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { PageHeader, Link, Icon } from '@sourcegraph/wildcard'
+import { PageHeader, Link } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
 import { withAuthenticatedUser } from '../../auth/withAuthenticatedUser'
@@ -17,8 +17,6 @@ import { eventLogger } from '../../tracking/eventLogger'
 import { convertActionsForCreate } from './action-converters'
 import { createCodeMonitor as _createCodeMonitor } from './backend'
 import { CodeMonitorForm } from './components/CodeMonitorForm'
-
-import styles from './CodeMonitorPage.module.scss'
 
 interface CreateCodeMonitorPageProps extends ThemeProps {
     location: H.Location
@@ -89,9 +87,11 @@ const AuthenticatedCreateCodeMonitorPage: React.FunctionComponent<
                 }
             >
                 <PageHeader.Heading as="h2" styleAs="h1">
-                    <PageHeader.Breadcrumb to="/code-monitoring">
-                        <Icon role="img" className={styles.icon} as={CodeMonitoringLogo} aria-label="Code monitoring" />
-                    </PageHeader.Breadcrumb>
+                    <PageHeader.Breadcrumb
+                        icon={CodeMonitoringLogo}
+                        to="/code-monitoring"
+                        aria-label="Code monitoring"
+                    />
                     <PageHeader.Breadcrumb>Create code monitor</PageHeader.Breadcrumb>
                 </PageHeader.Heading>
             </PageHeader>
