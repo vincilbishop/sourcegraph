@@ -1,5 +1,6 @@
 import { ReactElement, useMemo, useState, SVGProps, CSSProperties } from 'react'
 
+import { AxisScale, TickFormatter } from '@visx/axis/lib/types'
 import { Group } from '@visx/group'
 import { scaleTime, scaleLinear } from '@visx/scale'
 import { LinePath } from '@visx/shape'
@@ -22,6 +23,7 @@ import {
     generatePointsField,
     getChartContentSizes,
     getMinMaxBoundaries,
+    formatXTick,
 } from './utils'
 
 import styles from './LineChart.module.scss'
@@ -178,6 +180,7 @@ export function LineChart<D>(props: LineChartContentProps<D>): ReactElement | nu
                 width={content.width}
                 top={content.bottom}
                 left={content.left}
+                tickFormat={(formatXTick as unknown) as TickFormatter<AxisScale>}
             />
 
             <Group top={content.top} left={content.left}>
