@@ -15,6 +15,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/sourcegraph/go-ctags"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
@@ -24,20 +26,24 @@ import (
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
-// simpleParse converts each line into a symbol.
-func simpleParse(path string, bytes []byte) ([]Symbol, error) {
-	symbols := []Symbol{}
+// mockParser converts each line to a symbol.
+type mockParser struct{}
+
+func (mockParser) Parse(path string, bytes []byte) ([]*ctags.Entry, error) {
+	symbols := []*ctags.Entry{}
 
 	for _, line := range strings.Split(string(bytes), "\n") {
 		if line == "" {
 			continue
 		}
 
-		symbols = append(symbols, Symbol{Name: line})
+		symbols = append(symbols, &ctags.Entry{Name: line})
 	}
 
 	return symbols, nil
 }
+
+func (mockParser) Close() {}
 
 func TestIndex(t *testing.T) {
 	fatalIfError := func(err error, message string) {
@@ -82,7 +88,7 @@ func TestIndex(t *testing.T) {
 	add := func(filename string, contents string) {
 		fatalIfError(os.WriteFile(path.Join(gitDir, filename), []byte(contents), 0644), "os.WriteFile")
 		gitRun("add", filename)
-		symbols, err := simpleParse(filename, []byte(contents))
+		symbols, err := mockParser{}.Parse(filename, []byte(contents))
 		fatalIfError(err, "simpleParse")
 		state[filename] = []string{}
 		for _, symbol := range symbols {
@@ -104,7 +110,7 @@ func TestIndex(t *testing.T) {
 	db := dbtest.NewDB(t)
 	defer db.Close()
 
-	createParser := func() (ParseSymbolsFunc, error) { return simpleParse, nil }
+	createParser := func() (ctags.Parser, error) { return mockParser{}, nil }
 
 	service, err := NewService(db, git, createParser, 1, 1, false, 1, 1, 1)
 	fatalIfError(err, "NewService")
