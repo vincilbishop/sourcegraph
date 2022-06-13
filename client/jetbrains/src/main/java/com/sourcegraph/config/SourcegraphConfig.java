@@ -21,6 +21,7 @@ public class SourcegraphConfig implements PersistentStateComponent<SourcegraphCo
     public String lastSearchContextSpec;
     public boolean isGlobbingEnabled;
     public String accessToken;
+    public boolean isUrlNotificationDismissed;
 
     @NotNull
     public static SourcegraphConfig getInstance(@NotNull Project project) {
@@ -60,6 +61,10 @@ public class SourcegraphConfig implements PersistentStateComponent<SourcegraphCo
         return accessToken;
     }
 
+    public boolean isUrlNotificationDismissed() {
+        return this.isUrlNotificationDismissed;
+    }
+
     @Nullable
     @Override
     public SourcegraphConfig getState() {
@@ -77,5 +82,6 @@ public class SourcegraphConfig implements PersistentStateComponent<SourcegraphCo
         this.lastSearchContextSpec = settings.lastSearchContextSpec != null ? settings.lastSearchContextSpec : "global";
         this.isGlobbingEnabled = settings.isGlobbingEnabled;
         this.accessToken = settings.accessToken;
+        this.isUrlNotificationDismissed = settings.isUrlNotificationDismissed;
     }
 }

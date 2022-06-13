@@ -11,7 +11,7 @@ import java.util.Objects;
 public class ConfigUtil {
     @Nullable
     public static String getDefaultBranchName(@NotNull Project project) {
-        String defaultBranch = Objects.requireNonNull(SourcegraphConfig.getInstance(project)).getDefaultBranchName();
+        String defaultBranch = getProjectLevelConfig(project).getDefaultBranchName();
         if (defaultBranch == null || defaultBranch.length() == 0) {
             return UserLevelConfig.getDefaultBranchName();
         }
@@ -20,7 +20,7 @@ public class ConfigUtil {
 
     @Nullable
     public static String getRemoteUrlReplacements(@NotNull Project project) {
-        String replacements = Objects.requireNonNull(SourcegraphConfig.getInstance(project)).getRemoteUrlReplacements();
+        String replacements = getProjectLevelConfig(project).getRemoteUrlReplacements();
         if (replacements == null || replacements.length() == 0) {
             return UserLevelConfig.getRemoteUrlReplacements();
         }
@@ -29,7 +29,7 @@ public class ConfigUtil {
 
     @NotNull
     public static String getSourcegraphUrl(@NotNull Project project) {
-        String url = Objects.requireNonNull(SourcegraphConfig.getInstance(project)).getSourcegraphUrl();
+        String url = getProjectLevelConfig(project).getSourcegraphUrl();
         if (url == null || url.length() == 0) {
             return UserLevelConfig.getSourcegraphUrl();
         }
@@ -56,6 +56,15 @@ public class ConfigUtil {
     @Nullable
     public static String getAccessToken(Project project) {
         return getProjectLevelConfig(project).getAccessToken();
+    }
+
+    public static boolean isUrlNotificationDismissed(@NotNull Project project) {
+        return getProjectLevelConfig(project).isUrlNotificationDismissed();
+    }
+
+    public static void setUrlNotificationDismissed(@NotNull Project project, boolean value) {
+        SourcegraphConfig settings = getProjectLevelConfig(project);
+        settings.isUrlNotificationDismissed = value;
     }
 
     @NotNull

@@ -43,7 +43,8 @@ public class SettingsConfigurable implements Configurable {
             || !mySettingsComponent.getAccessToken().equals(settings.getAccessToken())
             || !mySettingsComponent.getDefaultBranchName().equals(settings.getDefaultBranchName())
             || !mySettingsComponent.getRemoteUrlReplacements().equals(settings.getRemoteUrlReplacements())
-            || mySettingsComponent.isGlobbingEnabled() != settings.isGlobbingEnabled();
+            || mySettingsComponent.isGlobbingEnabled() != settings.isGlobbingEnabled()
+            || mySettingsComponent.isUrlNotificationDismissed() != settings.isUrlNotificationDismissed();
     }
 
     @Override
@@ -54,6 +55,7 @@ public class SettingsConfigurable implements Configurable {
         settings.defaultBranch = mySettingsComponent.getDefaultBranchName();
         settings.remoteUrlReplacements = mySettingsComponent.getRemoteUrlReplacements();
         settings.isGlobbingEnabled = mySettingsComponent.isGlobbingEnabled();
+        settings.isUrlNotificationDismissed = mySettingsComponent.isUrlNotificationDismissed();
     }
 
     @Override
@@ -64,6 +66,7 @@ public class SettingsConfigurable implements Configurable {
         mySettingsComponent.setDefaultBranchName(settings.getDefaultBranchName() != null ? settings.getDefaultBranchName() : "main");
         mySettingsComponent.setRemoteUrlReplacements(settings.getRemoteUrlReplacements() != null ? settings.getRemoteUrlReplacements() : "");
         mySettingsComponent.setGlobbingEnabled(settings.isGlobbingEnabled());
+        mySettingsComponent.setUrlNotificationDismissedEnabled(settings.isUrlNotificationDismissed());
     }
 
     @Override

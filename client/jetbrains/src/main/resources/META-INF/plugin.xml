@@ -19,6 +19,7 @@
         />
         <notificationGroup id="Sourcegraph" displayType="BALLOON"/>
         <projectService id="sourcegraph.JCEFService" serviceImplementation="com.sourcegraph.find.JCEFService"/>
+        <postStartupActivity implementation="com.sourcegraph.config.NotificationActivity"/>
     </extensions>
 
     <actions>
