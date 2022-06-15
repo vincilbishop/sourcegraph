@@ -12,6 +12,7 @@ Each section comprehensively describes the steps needed to upgrade, and any manu
 
 ## Unreleased
 
+- `caddy` is upgraded to version 2.5.1 and contains a breaking change from version 2.5.0. Incoming `X-Forwarded-*` headers will no longer be trusted automatically. If you use a reverse proxy, such as CloudFlare, you must configure the `trusted_proxies` setting. Consult the [Caddy Documentation](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#defaults) for complete instructions or the [Caddy CHANGELOG](https://github.com/caddyserver/caddy/releases/tag/v2.5.0). [#828](https://github.com/sourcegraph/deploy-sourcegraph-docker/pull/828)
 - The Postgres DBs `frontend` and `codeintel-db` are now given 1 hour to begin accepting connections before Kubernetes restarts the containers. [#4136](https://github.com/sourcegraph/deploy-sourcegraph/pull/4136)
 
 ## 3.39 -> 3.40.2
