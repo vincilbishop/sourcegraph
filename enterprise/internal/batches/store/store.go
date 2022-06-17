@@ -209,7 +209,8 @@ type operations struct {
 	countChangesetSpecs                      *observation.Operation
 	getChangesetSpec                         *observation.Operation
 	listChangesetSpecs                       *observation.Operation
-	deleteExpiredChangesetSpecs              *observation.Operation
+	deleteStrayExpiredChangesetSpecs         *observation.Operation
+	deleteAttachedExpiredChangesetSpecs      *observation.Operation
 	getRewirerMappings                       *observation.Operation
 	listChangesetSpecsWithConflictingHeadRef *observation.Operation
 	deleteChangesetSpecs                     *observation.Operation
@@ -342,7 +343,8 @@ func newOperations(observationContext *observation.Context) *operations {
 			countChangesetSpecs:                      op("CountChangesetSpecs"),
 			getChangesetSpec:                         op("GetChangesetSpec"),
 			listChangesetSpecs:                       op("ListChangesetSpecs"),
-			deleteExpiredChangesetSpecs:              op("DeleteExpiredChangesetSpecs"),
+			deleteStrayExpiredChangesetSpecs:         op("DeleteStrayExpiredChangesetSpecs"),
+			deleteAttachedExpiredChangesetSpecs:      op("DeleteAttachedExpiredChangesetSpecs"),
 			deleteChangesetSpecs:                     op("DeleteChangesetSpecs"),
 			getRewirerMappings:                       op("GetRewirerMappings"),
 			listChangesetSpecsWithConflictingHeadRef: op("ListChangesetSpecsWithConflictingHeadRef"),
